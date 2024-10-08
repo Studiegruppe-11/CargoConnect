@@ -39,12 +39,12 @@ function RoutesStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="RoutesHome" component={RoutesScreen} />
-      <Stack.Screen name="RouteDetails" component={RouteDetailsScreen} />
       <Stack.Screen name="OptimizeRoutes" component={OptimizeRoutesScreen} />
       <Stack.Screen name="SelectRoute" component={SelectRouteScreen} />
     </Stack.Navigator>
   );
 }
+
 
 // Profile Stack
 function ProfileStack() {

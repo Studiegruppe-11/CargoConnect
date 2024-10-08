@@ -44,6 +44,7 @@ export default {
       FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
       FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
       GEOCODE_MAPS_APIKEY: process.env.GEOCODE_MAPS_APIKEY,
+      NVIDIA_API_KEY: process.env.NVIDIA_API_KEY,
     }
   }
 };

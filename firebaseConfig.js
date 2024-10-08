@@ -14,6 +14,7 @@ const {
   FIREBASE_MESSAGING_SENDER_ID,
   FIREBASE_APP_ID,
   GEOCODE_MAPS_APIKEY,
+  NVIDIA_API_KEY,
 } = Constants.expoConfig.extra;
 
 const firebaseConfig = {
@@ -40,4 +41,4 @@ const auth = initializeAuth(app, {
 });
 const database = getDatabase(app);
 
-export { app, auth, database, GEOCODE_MAPS_APIKEY };
+export { app, auth, database, GEOCODE_MAPS_APIKEY, NVIDIA_API_KEY };

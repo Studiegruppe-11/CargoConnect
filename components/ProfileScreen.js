@@ -1,6 +1,6 @@
 // components/ProfileScreen.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,22 +10,29 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
-} from 'react-native';
-import Slider from '@react-native-community/slider';
-import { Picker } from '@react-native-picker/picker'; // Correct import
-import { ref, onValue, update } from 'firebase/database';
-import { auth, database } from '../firebaseConfig';
-import { signOut } from 'firebase/auth';
+} from "react-native";
+import Slider from "@react-native-community/slider";
+import { Picker } from "@react-native-picker/picker"; 
+import * as Location from 'expo-location'; 
+import { ref, onValue, update } from "firebase/database";
+import { auth, database } from "../firebaseConfig";
+import { signOut } from "firebase/auth";
 
 const ProfileScreen = ({ navigation }) => {
   // State variables for user preferences
-  const [truckType, setTruckType] = useState('');
-  const [fuelEconomy, setFuelEconomy] = useState('');
-  const [cargoSpace, setCargoSpace] = useState('');
+  const [truckType, setTruckType] = useState("");
+  const [fuelEconomy, setFuelEconomy] = useState("");
+  const [cargoSpace, setCargoSpace] = useState("");
   const [drivingHours, setDrivingHours] = useState(8);
   const [sleepDuration, setSleepDuration] = useState(8);
-  const [preferredCountries, setPreferredCountries] = useState('');
-  const [role, setRole] = useState(null);  
+  const [preferredCountries, setPreferredCountries] = useState("");
+  const [role, setRole] = useState(null);
+  const [maxCargoWeight, setMaxCargoWeight] = useState("");
+  const [fuelEfficiency, setFuelEfficiency] = useState("");
+  const [maxDrivingTime, setMaxDrivingTime] = useState(8); // in hours
+  const [currentLatitude, setCurrentLatitude] = useState(null);
+  const [currentLongitude, setCurrentLongitude] = useState(null);
+
   // Loading state to manage asynchronous data fetching
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +40,7 @@ const ProfileScreen = ({ navigation }) => {
     // Fetch user data including role
     const user = auth.currentUser;
     if (user) {
-      const userRef = ref(database, 'users/' + user.uid);
+      const userRef = ref(database, "users/" + user.uid);
 
       const unsubscribe = onValue(
         userRef,
@@ -41,21 +48,22 @@ const ProfileScreen = ({ navigation }) => {
           const data = snapshot.val();
           if (data) {
             // Set preferences if they exist
-            setTruckType(data.truckType || '');
-            setFuelEconomy(data.fuelEconomy || '');
-            setCargoSpace(data.cargoSpace || '');
+            setTruckType(data.truckType || "");
+            setFuelEconomy(data.fuelEconomy || "");
+            setCargoSpace(data.cargoSpace || "");
             setDrivingHours(data.drivingHours || 8);
             setSleepDuration(data.sleepDuration || 8);
             setPreferredCountries(
-              data.preferredCountries ? data.preferredCountries.join(', ') : ''
+              data.preferredCountries ? data.preferredCountries.join(", ") : ""
             );
-            setRole(data.role || 'trucker'); // Added role
+            setRole(data.role || "trucker"); // Added role
           }
           setLoading(false);
+          fetchUserLocation();
         },
         (error) => {
-          console.error('Error fetching user preferences:', error);
-          Alert.alert('Error', 'Failed to load preferences.');
+          console.error("Error fetching user preferences:", error);
+          Alert.alert("Error", "Failed to load preferences.");
           setLoading(false);
         }
       );
@@ -63,7 +71,7 @@ const ProfileScreen = ({ navigation }) => {
       return () => unsubscribe();
     } else {
       setLoading(false);
-      Alert.alert('Authentication Required', 'Please log in first.');
+      Alert.alert("Authentication Required", "Please log in first.");
     }
   }, []);
 
@@ -77,61 +85,96 @@ const ProfileScreen = ({ navigation }) => {
       !preferredCountries ||
       !role
     ) {
-      Alert.alert('Missing Information', 'Please fill all fields.');
+      Alert.alert("Missing Information", "Please fill all fields.");
       return;
     }
 
     const user = auth.currentUser;
     if (user) {
-      const userRef = ref(database, 'users/' + user.uid);
+      const userRef = ref(database, "users/" + user.uid);
       const updatedData = {
         truckType,
         fuelEconomy,
         cargoSpace,
         drivingHours,
         sleepDuration,
-        preferredCountries: preferredCountries.split(',').map(country => country.trim()),
-        role, // Include role
+        preferredCountries: preferredCountries
+          .split(",")
+          .map((country) => country.trim()),
+        role,
+        maxCargoWeight: parseFloat(maxCargoWeight),
+        fuelEfficiency: parseFloat(fuelEfficiency),
+        maxDrivingTime, // Include role
       };
-      
+
       // Update the user's preferences in Firebase
       update(userRef, updatedData)
         .then(() => {
-          Alert.alert('Success', 'Preferences updated!');
+          Alert.alert("Success", "Preferences updated!");
         })
         .catch((error) => {
-          console.error('Error updating preferences:', error);
-          Alert.alert('Error', 'Failed to update preferences.');
+          console.error("Error updating preferences:", error);
+          Alert.alert("Error", "Failed to update preferences.");
         });
     } else {
-      Alert.alert('Authentication Required', 'Please log in first.');
+      Alert.alert("Authentication Required", "Please log in first.");
+    }
+  };
+
+  // After fetching user's current location
+  const fetchUserLocation = async () => {
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Denied",
+          "Permission to access location was denied"
+        );
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({});
+      setCurrentLatitude(location.coords.latitude);
+      setCurrentLongitude(location.coords.longitude);
+
+      // Save current location to Firebase
+      const userRef = ref(database, "users/" + auth.currentUser.uid);
+      update(userRef, {
+        currentLatitude: location.coords.latitude,
+        currentLongitude: location.coords.longitude,
+      });
+    } catch (error) {
+      Alert.alert("Error", error.message);
     }
   };
 
   // Function to handle user logout
   const handleLogout = () => {
     Alert.alert(
-      'Confirm Logout',
-      'Are you sure you want to log out?',
+      "Confirm Logout",
+      "Are you sure you want to log out?",
       [
         {
-          text: 'Cancel',
-          style: 'cancel',
+          text: "Cancel",
+          style: "cancel",
         },
-        { 
-          text: 'Logout', 
-          style: 'destructive',
+        {
+          text: "Logout",
+          style: "destructive",
           onPress: () => {
             signOut(auth)
               .then(() => {
-                Alert.alert('Logged Out', 'You have been logged out successfully.');
+                Alert.alert(
+                  "Logged Out",
+                  "You have been logged out successfully."
+                );
                 // Navigation handled by auth state listener
               })
               .catch((error) => {
-                console.error('Logout Error:', error);
-                Alert.alert('Logout Error', error.message);
+                console.error("Logout Error:", error);
+                Alert.alert("Logout Error", error.message);
               });
-          }
+          },
         },
       ],
       { cancelable: true }
@@ -182,7 +225,9 @@ const ProfileScreen = ({ navigation }) => {
       />
 
       {/* Driving Hours Slider */}
-      <Text style={styles.label}>Preferred Driving Hours per Day: {drivingHours}</Text>
+      <Text style={styles.label}>
+        Preferred Driving Hours per Day: {drivingHours}
+      </Text>
       <Slider
         minimumValue={4}
         maximumValue={12}
@@ -207,6 +252,39 @@ const ProfileScreen = ({ navigation }) => {
         minimumTrackTintColor="#1EB1FC"
         maximumTrackTintColor="#d3d3d3"
         thumbTintColor="#1EB1FC"
+      />
+
+      {/* Max Cargo Weight */}
+      <Text style={styles.label}>Max Cargo Weight (kg)</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter max cargo weight"
+        value={maxCargoWeight}
+        onChangeText={setMaxCargoWeight}
+        keyboardType="numeric"
+      />
+
+      {/* Fuel Efficiency */}
+      <Text style={styles.label}>Fuel Efficiency (km/L)</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter fuel efficiency"
+        value={fuelEfficiency}
+        onChangeText={setFuelEfficiency}
+        keyboardType="numeric"
+      />
+
+      {/* Max Driving Time */}
+      <Text style={styles.label}>
+        Max Driving Time per Day (hours): {maxDrivingTime}
+      </Text>
+      <Slider
+        minimumValue={1}
+        maximumValue={12}
+        step={1}
+        value={maxDrivingTime}
+        onValueChange={setMaxDrivingTime}
+        style={styles.slider}
       />
 
       {/* Preferred Countries */}
@@ -244,59 +322,59 @@ const ProfileScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { 
-      flexGrow: 1, 
-      justifyContent: 'center', 
-      padding: 20,
-      backgroundColor: '#f9f9f9',
-    },
-    title: { 
-      fontSize: 24, 
-      marginBottom: 20, 
-      textAlign: 'center',
-      fontWeight: 'bold',
-    },
-    inputLabel: {
-      fontSize: 16,
-      marginBottom: 5,
-      color: '#333',
-    },
-    input: { 
-      height: 40, 
-      borderColor: '#ccc', 
-      borderWidth: 1, 
-      marginBottom: 20, 
-      paddingHorizontal: 10, 
-      borderRadius: 5,
-      backgroundColor: '#fff',
-    },
-    label: {
-      fontSize: 16,
-      marginBottom: 5,
-      color: '#333',
-    },
-    pickerContainer: {
-      borderColor: 'gray',
-      borderWidth: 0,
-      borderRadius: 5,
-      marginBottom: 20,
-      overflow: 'hidden',
-      backgroundColor: '#fff', // Ensure background is white
-    },
-    picker: {
-      height: 50,
-      width: '100%',
-      color: '#000', // Set text color to black
-    },
-    pickerItem: {
-      height: 50,
-      color: '#000', // For iOS Picker items
-    },
-    logoutButtonContainer: {
-      marginTop: 30,
-      alignSelf: 'center',
-      width: '60%',
-    },
-  });
+  container: {
+    flexGrow: 1,
+    justifyContent: "center",
+    padding: 20,
+    backgroundColor: "#f9f9f9",
+  },
+  title: {
+    fontSize: 24,
+    marginBottom: 20,
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+  inputLabel: {
+    fontSize: 16,
+    marginBottom: 5,
+    color: "#333",
+  },
+  input: {
+    height: 40,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    marginBottom: 20,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+    backgroundColor: "#fff",
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 5,
+    color: "#333",
+  },
+  pickerContainer: {
+    borderColor: "gray",
+    borderWidth: 0,
+    borderRadius: 5,
+    marginBottom: 20,
+    overflow: "hidden",
+    backgroundColor: "#fff", // Ensure background is white
+  },
+  picker: {
+    height: 50,
+    width: "100%",
+    color: "#000", // Set text color to black
+  },
+  pickerItem: {
+    height: 50,
+    color: "#000", // For iOS Picker items
+  },
+  logoutButtonContainer: {
+    marginTop: 30,
+    alignSelf: "center",
+    width: "60%",
+  },
+});
 
 export default ProfileScreen;
