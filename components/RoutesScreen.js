@@ -1,3 +1,5 @@
+// /components/RoutesScreen.js
+
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Alert } from 'react-native';
 import MapView, { Polyline, Marker } from 'react-native-maps';
@@ -63,30 +65,32 @@ const RoutesScreen = ({ navigation }) => {
     navigation.navigate('SelectRoute', { optimizedRoutes });
   };
 
+  // Define colors for top 3 routes
+const routeColors = ['#FF0000', '#00FF00', '#0000FF']; // Red, Green, Blue
+
   return (
     <SafeAreaView style={styles.container}>
-      <MapView style={styles.map}>
-        {optimizedRoutes.map((route, index) => (
-          <Polyline
-            key={`route-${index}`}
-            coordinates={route.coordinates}
-            strokeColor="#1EB1FC"
-            strokeWidth={3}
-          />
-        ))}
-
-        {/* Optionally, add markers for stops */}
-        {optimizedRoutes.map((route) =>
-          route.coordinates.map((coord, idx) => (
-            <Marker
-              key={`${route.vehicleId}-marker-${idx}`}
-              coordinate={coord}
-              title={`Stop ${idx + 1}`}
-              description={`Task ID: ${coord.taskId}`}
-            />
-          ))
-        )}
-      </MapView>
+<MapView style={styles.map}>
+  {optimizedRoutes.slice(0, 3).map((route, index) => (
+    <Polyline
+      key={`route-${index}`}
+      coordinates={route.coordinates}
+      strokeColor={routeColors[index % routeColors.length]}
+      strokeWidth={3}
+    />
+  ))}
+  {/* Optionally, add markers for stops */}
+  {optimizedRoutes.slice(0, 3).map((route) =>
+    route.coordinates.map((coord, idx) => (
+      <Marker
+        key={`${route.vehicleId}-marker-${idx}`}
+        coordinate={coord}
+        title={`Stop ${idx + 1}`}
+        description={`Task ID: ${coord.taskId}`}
+      />
+    ))
+  )}
+</MapView>
 
       {/* Optimize Routes Button */}
       <TouchableOpacity style={styles.optimizeButton} onPress={handleOptimizeRoutes}>

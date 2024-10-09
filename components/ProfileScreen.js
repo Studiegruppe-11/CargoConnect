@@ -23,6 +23,8 @@ const ProfileScreen = ({ navigation }) => {
   const [truckType, setTruckType] = useState("");
   const [fuelEconomy, setFuelEconomy] = useState("");
   const [cargoSpace, setCargoSpace] = useState("");
+  const [startLatitude, setStartLatitude] = useState('');
+const [startLongitude, setStartLongitude] = useState('');
   const [drivingHours, setDrivingHours] = useState(8);
   const [sleepDuration, setSleepDuration] = useState(8);
   const [preferredCountries, setPreferredCountries] = useState("");
@@ -64,9 +66,12 @@ const ProfileScreen = ({ navigation }) => {
             setMaxDrivingTime(data.maxDrivingTime || 8);
             setAvailability(data.availability || "");
             setMaxCargoVolume(data.maxCargoVolume ? data.maxCargoVolume.toString() : "");
+            setStartLatitude(data.startLatitude ? data.startLatitude.toString() : '');
+            setStartLongitude(data.startLongitude ? data.startLongitude.toString() : '');
           }
           setLoading(false);
-          fetchUserLocation();
+          // Bruges ikke længere, da koordinater indsættes manuelt
+          // fetchUserLocation();
         },
         (error) => {
           console.error("Error fetching user preferences:", error);
@@ -107,6 +112,8 @@ const ProfileScreen = ({ navigation }) => {
         truckType,
         fuelEconomy,
         cargoSpace,
+        startLatitude: parseFloat(startLatitude),
+        startLongitude: parseFloat(startLongitude),
         drivingHours,
         sleepDuration,
         preferredCountries: preferredCountries
@@ -114,10 +121,12 @@ const ProfileScreen = ({ navigation }) => {
           .map((country) => country.trim()),
         role,
         maxCargoWeight: parseFloat(maxCargoWeight),
+        maxCargoVolume: parseFloat(maxCargoVolume),
         fuelEfficiency: parseFloat(fuelEfficiency),
         maxDrivingTime,
         availability,
         maxCargoVolume: parseFloat(maxCargoVolume),
+        averageSpeed: 60, // Default average speed
       };
 
       // Update the user's preferences in Firebase
@@ -135,31 +144,34 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   // After fetching user's current location
-  const fetchUserLocation = async () => {
-    try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Denied",
-          "Permission to access location was denied"
-        );
-        return;
-      }
+  // const fetchUserLocation = async () => {
+  //   try {
+  //     let { status } = await Location.requestForegroundPermissionsAsync();
+  //     if (status !== "granted") {
+  //       Alert.alert(
+  //         "Permission Denied",
+  //         "Permission to access location was denied"
+  //       );
+  //       return;
+  //     }
 
-      let location = await Location.getCurrentPositionAsync({});
-      setCurrentLatitude(location.coords.latitude);
-      setCurrentLongitude(location.coords.longitude);
+  //     let location = await Location.getCurrentPositionAsync({});
+  //     setCurrentLatitude(location.coords.latitude);
+  //     setCurrentLongitude(location.coords.longitude);
 
-      // Save current location to Firebase
-      const userRef = ref(database, "users/" + auth.currentUser.uid);
-      update(userRef, {
-        currentLatitude: location.coords.latitude,
-        currentLongitude: location.coords.longitude,
-      });
-    } catch (error) {
-      Alert.alert("Error", error.message);
-    }
-  };
+  //     // Save current location to Firebase
+  //     const userRef = ref(database, "users/" + auth.currentUser.uid);
+  //     await update(userRef, {
+  //       currentLatitude: location.coords.latitude,
+  //       currentLongitude: location.coords.longitude,
+  //     });
+  
+  //     // Confirm that location is saved
+  //     console.log('User location updated:', location.coords);
+  //   } catch (error) {
+  //     Alert.alert("Error", error.message);
+  //   }
+  // };
 
   // Function to handle user logout
   const handleLogout = () => {
@@ -236,6 +248,24 @@ const ProfileScreen = ({ navigation }) => {
         onChangeText={setCargoSpace}
         keyboardType="numeric"
       />
+
+<Text style={styles.label}>Starting Latitude</Text>
+<TextInput
+  style={styles.input}
+  placeholder="Enter starting latitude"
+  value={startLatitude}
+  onChangeText={setStartLatitude}
+  keyboardType="numeric"
+/>
+
+<Text style={styles.label}>Starting Longitude</Text>
+<TextInput
+  style={styles.input}
+  placeholder="Enter starting longitude"
+  value={startLongitude}
+  onChangeText={setStartLongitude}
+  keyboardType="numeric"
+/>
 
       {/* Max Cargo Volume */}
       <Text style={styles.label}>Max Cargo Volume (m³)</Text>

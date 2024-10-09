@@ -13,7 +13,7 @@ import { getDatabase, ref, onValue } from 'firebase/database';
 import ClientInputScreen from '../components/ClientInputScreen';
 import MapScreen from '../components/MapScreen';
 import TruckerInputScreen from '../components/TruckerInputScreen';
-import RouteDetailsScreen from '../components/DeliveryDetailsScreen';
+import DeliveryDetailsScreen from '../components/DeliveryDetailsScreen';
 import RoutesScreen from '../components/RoutesScreen';
 import LoginScreen from '../components/LoginScreen';
 import RegisterScreen from '../components/RegisterScreen';
@@ -29,7 +29,7 @@ function MapStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MapHome" component={MapScreen} />
-      <Stack.Screen name="RouteDetails" component={RouteDetailsScreen} />
+      <Stack.Screen name="DeliveryDetails" component={DeliveryDetailsScreen} />
     </Stack.Navigator>
   );
 }

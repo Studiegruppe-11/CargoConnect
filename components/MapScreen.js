@@ -171,22 +171,37 @@ const MapScreen = ({ navigation }) => {
         showsUserLocation={true}
         showsMyLocationButton={false}
         initialRegion={{
-          latitude: userLocation ? userLocation.latitude : 37.78825,
-          longitude: userLocation ? userLocation.longitude : -122.4324,
+          latitude: userLocation ? userLocation.latitude : 55.68162938805638,
+          longitude: userLocation ? userLocation.longitude : 12.529937312745204,
           latitudeDelta: 0.0922,
           longitudeDelta: 0.0421,
         }}
       >
+ {filteredDeliveries.map((delivery) => (
+  <Marker
+  key={`delivery-${delivery.id}`}
+  coordinate={{
+    latitude: delivery.pickupLocation ? delivery.pickupLocation.latitude : 0,
+    longitude: delivery.pickupLocation ? delivery.pickupLocation.longitude : 0,
+  }}
+  title={delivery.deliveryDetails}
+  description={delivery.pickupAddress}
+  onPress={() => {
+    navigation.navigate('DeliveryDetails', { delivery });
+  }}
+/>
+        ))}
+
+        {/* Optionally, you can also display delivery locations */}
         {filteredDeliveries.map((delivery) => (
           <Marker
-            key={`delivery-${delivery.id}`} // Prefix added
+            key={`delivery-dest-${delivery.id}`}
             coordinate={{
-              latitude: delivery.location ? delivery.location.latitude : 0,
-              longitude: delivery.location ? delivery.location.longitude : 0,
+              latitude: delivery.deliveryLocation ? delivery.deliveryLocation.latitude : 0,
+              longitude: delivery.deliveryLocation ? delivery.deliveryLocation.longitude : 0,
             }}
-            title={delivery.deliveryDetails}
-            description={delivery.pickupAddress}
-            onPress={() => navigation.navigate('RouteDetails', { delivery })}
+            title={`${delivery.deliveryDetails} (Destination)`}
+            description={delivery.deliveryAddress}
           />
         ))}
 
