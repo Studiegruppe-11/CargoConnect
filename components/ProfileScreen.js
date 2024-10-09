@@ -12,8 +12,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 import Slider from "@react-native-community/slider";
-import { Picker } from "@react-native-picker/picker"; 
-import * as Location from 'expo-location'; 
+import { Picker } from "@react-native-picker/picker";
+import * as Location from 'expo-location';
 import { ref, onValue, update } from "firebase/database";
 import { auth, database } from "../firebaseConfig";
 import { signOut } from "firebase/auth";
@@ -32,6 +32,8 @@ const ProfileScreen = ({ navigation }) => {
   const [maxDrivingTime, setMaxDrivingTime] = useState(8); // in hours
   const [currentLatitude, setCurrentLatitude] = useState(null);
   const [currentLongitude, setCurrentLongitude] = useState(null);
+  const [availability, setAvailability] = useState(""); // New field
+  const [maxCargoVolume, setMaxCargoVolume] = useState(""); // New field
 
   // Loading state to manage asynchronous data fetching
   const [loading, setLoading] = useState(true);
@@ -57,6 +59,11 @@ const ProfileScreen = ({ navigation }) => {
               data.preferredCountries ? data.preferredCountries.join(", ") : ""
             );
             setRole(data.role || "trucker"); // Added role
+            setMaxCargoWeight(data.maxCargoWeight ? data.maxCargoWeight.toString() : "");
+            setFuelEfficiency(data.fuelEfficiency ? data.fuelEfficiency.toString() : "");
+            setMaxDrivingTime(data.maxDrivingTime || 8);
+            setAvailability(data.availability || "");
+            setMaxCargoVolume(data.maxCargoVolume ? data.maxCargoVolume.toString() : "");
           }
           setLoading(false);
           fetchUserLocation();
@@ -83,7 +90,11 @@ const ProfileScreen = ({ navigation }) => {
       !fuelEconomy ||
       !cargoSpace ||
       !preferredCountries ||
-      !role
+      !role ||
+      !maxCargoWeight ||
+      !fuelEfficiency ||
+      !availability ||
+      !maxCargoVolume
     ) {
       Alert.alert("Missing Information", "Please fill all fields.");
       return;
@@ -104,7 +115,9 @@ const ProfileScreen = ({ navigation }) => {
         role,
         maxCargoWeight: parseFloat(maxCargoWeight),
         fuelEfficiency: parseFloat(fuelEfficiency),
-        maxDrivingTime, // Include role
+        maxDrivingTime,
+        availability,
+        maxCargoVolume: parseFloat(maxCargoVolume),
       };
 
       // Update the user's preferences in Firebase
@@ -224,6 +237,16 @@ const ProfileScreen = ({ navigation }) => {
         keyboardType="numeric"
       />
 
+      {/* Max Cargo Volume */}
+      <Text style={styles.label}>Max Cargo Volume (m³)</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter max cargo volume"
+        value={maxCargoVolume}
+        onChangeText={setMaxCargoVolume}
+        keyboardType="numeric"
+      />
+
       {/* Driving Hours Slider */}
       <Text style={styles.label}>
         Preferred Driving Hours per Day: {drivingHours}
@@ -294,6 +317,15 @@ const ProfileScreen = ({ navigation }) => {
         placeholder="e.g., Germany, France"
         value={preferredCountries}
         onChangeText={setPreferredCountries}
+      />
+
+      {/* Availability */}
+      <Text style={styles.label}>Availability (e.g., Weekdays)</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter your availability"
+        value={availability}
+        onChangeText={setAvailability}
       />
 
       {/* Role Selection */}

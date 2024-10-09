@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import * as Location from 'expo-location';
-import { Picker } from '@react-native-picker/picker';
 import { getDatabase, ref, push, set, update, onValue, off } from 'firebase/database';
 import { GEOCODE_MAPS_APIKEY, auth } from '../firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -73,18 +72,25 @@ const geocodeAddress = async (address) => {
 
 const ClientInputScreen = ({ navigation, route }) => {
   const { routeId } = route.params || {}; // Get routeId if provided
+
+  // State variables
   const [pickupAddress, setPickupAddress] = useState('');
   const [deliveryDetails, setDeliveryDetails] = useState('');
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
   const [width, setWidth] = useState('');
   const [length, setLength] = useState('');
+  const [payment, setPayment] = useState(''); // New field
+  const [earliestStartTime, setEarliestStartTime] = useState(''); // New field
+  const [latestEndTime, setLatestEndTime] = useState(''); // New field
+  const [serviceTime, setServiceTime] = useState(''); // New field
+
   const [location, setLocation] = useState(null);
   const [coordinates, setCoordinates] = useState({ latitude: '', longitude: '' });
   const [showMap, setShowMap] = useState(false);
   const [role, setRole] = useState(null);
-  const [isGeocoding, setIsGeocoding] = useState(false); 
-  const [mapMarker, setMapMarker] = useState(null); 
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [mapMarker, setMapMarker] = useState(null);
 
   const db = getDatabase();
   const mapRef = useRef(null); // Reference to MapView
@@ -267,7 +273,18 @@ const ClientInputScreen = ({ navigation, route }) => {
   };
 
   const handleCreateDelivery = async () => {
-    if (!pickupAddress || !deliveryDetails || !weight || !height || !width || !length) {
+    if (
+      !pickupAddress ||
+      !deliveryDetails ||
+      !weight ||
+      !height ||
+      !width ||
+      !length ||
+      !payment ||
+      !earliestStartTime ||
+      !latestEndTime ||
+      !serviceTime
+    ) {
       Alert.alert('Error', 'Please fill in all fields.');
       return;
     }
@@ -285,6 +302,10 @@ const ClientInputScreen = ({ navigation, route }) => {
       height: parseFloat(height),
       width: parseFloat(width),
       length: parseFloat(length),
+      payment: parseFloat(payment), // New field
+      earliestStartTime: parseInt(earliestStartTime, 10), // New field
+      latestEndTime: parseInt(latestEndTime, 10), // New field
+      serviceTime: parseInt(serviceTime, 10), // New field
       location: coords,
       routeId: routeId || null, // Associate with route if routeId is provided
       status: 'pending', // Optional: Add status field
@@ -336,7 +357,7 @@ const ClientInputScreen = ({ navigation, route }) => {
 
       {showMap && (
         <MapView
-          ref={mapRef} // Attach the ref to MapView
+          ref={mapRef}
           style={styles.map}
           onPress={handleMapPress}
           initialRegion={{
@@ -370,20 +391,18 @@ const ClientInputScreen = ({ navigation, route }) => {
         style={styles.input}
         placeholder="Enter pickup address"
         value={pickupAddress}
-        onChangeText={handleAddressChange} // Only updates state
-        onBlur={handleAddressBlur} // Triggers geocoding on blur
+        onChangeText={handleAddressChange}
+        onBlur={handleAddressBlur}
       />
 
       {/* Coordinates */}
-      <Text style={styles.label}>
-        Or coordinates (written as: Latitude, Longitude)
-      </Text>
+      <Text style={styles.label}>Or coordinates (Latitude, Longitude)</Text>
       <TextInput
         style={styles.input}
         placeholder="e.g., 55.85193, 12.566337"
         value={`${coordinates.latitude}, ${coordinates.longitude}`}
-        onChangeText={handleCoordinatesChange} // Only updates state
-        onBlur={handleCoordinatesBlur} // Triggers reverse geocoding on blur
+        onChangeText={handleCoordinatesChange}
+        onBlur={handleCoordinatesBlur}
       />
 
       {/* Delivery Details */}
@@ -432,6 +451,46 @@ const ClientInputScreen = ({ navigation, route }) => {
         placeholder="Enter length"
         value={length}
         onChangeText={setLength}
+        keyboardType="numeric"
+      />
+
+      {/* Payment */}
+      <Text style={styles.label}>Payment (€)</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter payment amount"
+        value={payment}
+        onChangeText={setPayment}
+        keyboardType="numeric"
+      />
+
+      {/* Earliest Start Time */}
+      <Text style={styles.label}>Earliest Start Time (Unix Timestamp)</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="e.g., 1633035600"
+        value={earliestStartTime}
+        onChangeText={setEarliestStartTime}
+        keyboardType="numeric"
+      />
+
+      {/* Latest End Time */}
+      <Text style={styles.label}>Latest End Time (Unix Timestamp)</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="e.g., 1633122000"
+        value={latestEndTime}
+        onChangeText={setLatestEndTime}
+        keyboardType="numeric"
+      />
+
+      {/* Service Time */}
+      <Text style={styles.label}>Service Time at Stop (seconds)</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="e.g., 600"
+        value={serviceTime}
+        onChangeText={setServiceTime}
         keyboardType="numeric"
       />
 

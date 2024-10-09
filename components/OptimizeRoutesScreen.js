@@ -29,7 +29,7 @@ const OptimizeRoutesScreen = ({ navigation }) => {
           const userConstraints = await fetchUserConstraints();
 
           // Prepare payload for NVIDIA cuOpt
-          const payload = prepareCuOptPayload(deliveries, userConstraints);
+          const payload = await prepareCuOptPayload(deliveries, userConstraints);
 
           // Call NVIDIA cuOpt API
           const optimizedData = await callCuOptAPI(payload);
@@ -56,6 +56,7 @@ const OptimizeRoutesScreen = ({ navigation }) => {
 
   // Helper functions
 
+  // Fetch deliveries including payment and time windows
   const fetchDeliveries = () => {
     return new Promise((resolve, reject) => {
       const deliveriesRef = ref(db, 'deliveries');
@@ -67,10 +68,7 @@ const OptimizeRoutesScreen = ({ navigation }) => {
           if (data) {
             Object.keys(data).forEach((key) => {
               if (data[key].status === 'accepted') {
-                deliveries.push({
-                  id: key,
-                  ...data[key],
-                });
+                deliveries.push({ id: key, ...data[key] });
               }
             });
           }
@@ -92,6 +90,10 @@ const OptimizeRoutesScreen = ({ navigation }) => {
           userRef,
           (snapshot) => {
             const data = snapshot.val();
+            // Ensure preferredCountries is an array
+            if (data.preferredCountries && typeof data.preferredCountries === 'string') {
+              data.preferredCountries = data.preferredCountries.split(',').map((c) => c.trim());
+            }
             resolve(data);
           },
           (error) => {
@@ -104,56 +106,193 @@ const OptimizeRoutesScreen = ({ navigation }) => {
     });
   };
 
-  const prepareCuOptPayload = (deliveries, constraints) => {
-    const task_locations = deliveries.map((delivery) => [
-      delivery.location.latitude,
-      delivery.location.longitude,
-    ]);
+  
 
+  const prepareCuOptPayload = async (deliveries, constraints) => {
+    // Map coordinates to indices
+    const uniqueLocations = [];
+    const locationIndices = {};
+    let index = 0;
+  
+    // Add vehicle starting location
+    const vehicleStartLocation = {
+      latitude: constraints.currentLatitude || 0,
+      longitude: constraints.currentLongitude || 0,
+    };
+    uniqueLocations.push(vehicleStartLocation);
+    const vehicleLocationIndex = index;
+    index++;
+  
+    // Add task locations
+    for (const delivery of deliveries) {
+      const locKey = `${delivery.location.latitude},${delivery.location.longitude}`;
+      if (!(locKey in locationIndices)) {
+        uniqueLocations.push({
+          latitude: delivery.location.latitude,
+          longitude: delivery.location.longitude,
+        });
+        locationIndices[locKey] = index;
+        index++;
+      }
+    }
+  
+    // Build cost matrix
+    const costMatrix = [];
+    const travelTimeMatrix = [];
+    for (let i = 0; i < uniqueLocations.length; i++) {
+      costMatrix[i] = [];
+      travelTimeMatrix[i] = [];
+      for (let j = 0; j < uniqueLocations.length; j++) {
+        if (i === j) {
+          costMatrix[i][j] = 0;
+          travelTimeMatrix[i][j] = 0;
+        } else {
+          const locA = uniqueLocations[i];
+          const locB = uniqueLocations[j];
+          const distance = haversineDistance(locA, locB);
+          costMatrix[i][j] = distance; // in kilometers
+          // Assuming average speed of 60 km/h
+          travelTimeMatrix[i][j] = (distance / 60) * 3600; // in seconds
+        }
+      }
+    }
+  
+    // Prepare vehicle_locations and task_locations
+    const vehicle_locations = [vehicleLocationIndex]; // Index of the vehicle's starting location
+    const task_locations = deliveries.map((delivery) => {
+      const locKey = `${delivery.location.latitude},${delivery.location.longitude}`;
+      return locationIndices[locKey];
+    });
+  
+    // Prepare other task data
     const task_ids = deliveries.map((delivery) => delivery.id);
-
     const demands = deliveries.map((delivery) => [
-      delivery.weight || 1, // Default to 1 if weight is not provided
+      delivery.weight || 1,
+      delivery.volume || 1,
     ]);
+    const service_times = deliveries.map((delivery) => delivery.serviceTime || 600);
+    const task_time_windows = deliveries.map((delivery) => [
+      delivery.earliestStartTime || 0,
+      delivery.latestEndTime || 86400,
+    ]);
+    const prizes = deliveries.map((delivery) => delivery.payment || 0);
+  
+    // Prepare order_vehicle_match
+    const order_vehicle_match = [];
 
-    // Vehicle data
-    const vehicle_ids = [auth.currentUser.uid];
-    const capacities = [[constraints.maxCargoWeight || 10000]]; // Default capacity
+    for (let i = 0; i < deliveries.length; i++) {
+      const delivery = deliveries[i];
+    
+      // Determine if this delivery is compatible with the vehicle
+      let deliveryCountry = delivery.country || 'Unknown';
+      if (!delivery.country) {
+        deliveryCountry = await getCountryFromCoordinates(
+          delivery.location.latitude,
+          delivery.location.longitude
+        );
+      }
+    
+      const isMatch = constraints.preferredCountries.includes(deliveryCountry);
+    
+      order_vehicle_match.push({
+        order_id: i, // Index of the task
+        vehicle_ids: isMatch ? [0] : [], // Vehicle index 0 if compatible
+      });
+    }
+  
+    // Fleet data
+    const capacities = [
+      [
+        constraints.maxCargoWeight || 10000,
+        constraints.maxCargoVolume || 100,
+      ],
+    ];
     const vehicle_time_windows = [
-      [0, (constraints.maxDrivingTime || 8) * 3600], // Convert hours to seconds
+      [0, (constraints.maxDrivingTime || 8) * 3600],
     ];
-    const vehicle_locations = [
-      [constraints.currentLatitude || 0, constraints.currentLongitude || 0], // Default to (0,0)
-    ];
-
+  
+    const fleet_data = {
+      vehicle_locations,
+      vehicle_ids: [auth.currentUser.uid],
+      capacities,
+      vehicle_time_windows,
+      // Include other fleet data if needed
+    };
+  
+    const task_data = {
+      task_locations,
+      task_ids,
+      demand: demands,
+      task_time_windows,
+      service_times,
+      prizes,
+      order_vehicle_match,
+      // Include other task data if needed
+    };
+  
     const payload = {
       action: 'cuOpt_OptimizedRouting',
       data: {
-        task_data: {
-          task_locations,
-          task_ids,
-          demand: demands,
-          time_windows: Array(task_ids.length).fill([0, 86400]), // Allowable time window (24 hours)
-          service_times: Array(task_ids.length).fill(600), // 10 minutes per service
+        cost_waypoint_graph_data: null, // Not used in this example
+        travel_time_waypoint_graph_data: null, // Not used in this example
+        cost_matrix_data: {
+          cost_matrix: {
+            '0': costMatrix, // Assuming vehicle type '0'
+          },
+        },
+        travel_time_matrix_data: {
+          cost_matrix: {
+            '0': travelTimeMatrix,
+          },
         },
         fleet_data: {
-          vehicle_ids,
-          capacities,
-          vehicle_time_windows,
           vehicle_locations,
+          vehicle_ids: [auth.currentUser.uid],
+          capacities: [
+            [
+              constraints.maxCargoWeight || 10000,
+              constraints.maxCargoVolume || 100,
+            ],
+          ],
+          vehicle_time_windows: [
+            [0, (constraints.maxDrivingTime || 8) * 3600],
+          ],
+          // Include other fleet data if necessary
+        },
+        task_data: {
+          task_locations,
+          task_ids: deliveries.map((delivery) => delivery.id),
+          demand: deliveries.map((delivery) => [
+            delivery.weight || 1,
+            delivery.volume || 1,
+          ]),
+          task_time_windows: deliveries.map((delivery) => [
+            delivery.earliestStartTime || 0,
+            delivery.latestEndTime || 86400,
+          ]),
+          service_times: deliveries.map((delivery) => delivery.serviceTime || 600),
+          prizes: deliveries.map((delivery) => delivery.payment || 0),
+          order_vehicle_match,
         },
         solver_config: {
-          time_limit: 60, // in seconds
+          time_limit: 60,
           objectives: {
             cost: 1,
-            // ...other objectives
+            travel_time: 0,
+            variance_route_size: 0,
+            variance_route_service_time: 0,
+            prize: 0,
+            vehicle_fixed_cost: 0,
           },
+          config_file: null,
           verbose_mode: false,
           error_logging: true,
         },
       },
-      client_version: '',
+      parameters: {}, // As per the sample data
+      client_version: '', // Set to '' or 'custom' to skip version check
     };
+  
     return payload;
   };
 
@@ -161,7 +300,7 @@ const OptimizeRoutesScreen = ({ navigation }) => {
     const invokeUrl = 'https://optimize.api.nvidia.com/v1/nvidia/cuopt';
     const fetchUrlFormat = 'https://optimize.api.nvidia.com/v1/status/';
     const headers = {
-      Authorization: 'Bearer $NVIDIA', // Replace with your API key
+      Authorization: `Bearer ${NVIDIA_API_KEY}`,
       Accept: 'application/json',
       'Content-Type': 'application/json',
     };
@@ -172,9 +311,11 @@ const OptimizeRoutesScreen = ({ navigation }) => {
       headers,
     });
 
+    // Handle the async nature of the API
     while (response.status === 202) {
       const requestId = response.headers.get('NVCF-REQID');
       const fetchUrl = `${fetchUrlFormat}${requestId}`;
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait before retrying
       response = await fetch(fetchUrl, {
         method: 'GET',
         headers,
@@ -192,22 +333,22 @@ const OptimizeRoutesScreen = ({ navigation }) => {
   };
 
   const parseOptimizedRoute = (responseBody) => {
-    // Adjust this based on the actual response structure from NVIDIA cuOpt
     const routes = responseBody.result.routes;
     const optimizedRoutes = [];
-
     routes.forEach((route) => {
       const coordinates = route.vehicleStops.map((stop) => ({
         latitude: stop.taskLocation[0],
         longitude: stop.taskLocation[1],
         taskId: stop.taskId,
+        arrivalTime: stop.arrivalTime,
+        departureTime: stop.departureTime,
       }));
       optimizedRoutes.push({
         vehicleId: route.vehicleId,
         coordinates,
+        totalProfit: route.totalProfit, // Assuming API provides this
       });
     });
-
     return optimizedRoutes;
   };
 
