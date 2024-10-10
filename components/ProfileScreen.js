@@ -125,19 +125,19 @@ const [startLongitude, setStartLongitude] = useState('');
         fuelEfficiency: parseFloat(fuelEfficiency),
         maxDrivingTime,
         availability,
-        maxCargoVolume: parseFloat(maxCargoVolume),
         averageSpeed: 60, // Default average speed
       };
+      
 
       // Update the user's preferences in Firebase
       update(userRef, updatedData)
-        .then(() => {
-          Alert.alert("Success", "Preferences updated!");
-        })
-        .catch((error) => {
-          console.error("Error updating preferences:", error);
-          Alert.alert("Error", "Failed to update preferences.");
-        });
+      .then(() => {
+        Alert.alert("Success", "Preferences updated!");
+      })
+      .catch((error) => {
+        console.error("Error updating preferences:", error);
+        Alert.alert("Error", "Failed to update preferences.");
+      });
     } else {
       Alert.alert("Authentication Required", "Please log in first.");
     }
