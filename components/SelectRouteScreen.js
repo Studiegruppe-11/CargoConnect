@@ -3,10 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
-
-const SelectRouteScreen = () => {
-  const navigation = useNavigation();
-  const route = useRoute();
+const SelectRouteScreen = ({ navigation, route }) => {
   const { optimizedRoutes } = route.params || {};
   const [selectedRoute, setSelectedRoute] = useState(null);
 
@@ -18,59 +15,70 @@ const SelectRouteScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Select an Optimized Route</Text>
-      {optimizedRoutes && optimizedRoutes.length > 0 ? (
-        <FlatList
-          data={optimizedRoutes}
-          keyExtractor={(item) => item.vehicleId}
-          renderItem={({ item, index }) => (
-            <TouchableOpacity
-              style={styles.routeItem}
-              onPress={() => handleRouteSelect(item)}
-            >
-              <Text style={styles.routeText}>Route {index + 1}</Text>
-              <Text style={styles.routeDetails}>Vehicle ID: {item.vehicleId}</Text>
-              <Text style={styles.routeDetails}>
-                Stops: {item.coordinates.length}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      ) : (
-        <Text>No optimized routes available.</Text>
-      )}
+      <FlatList
+        data={optimizedRoutes}
+        keyExtractor={(item) => item.vehicleId}
+        renderItem={({ item, index }) => (
+          <TouchableOpacity
+            style={[
+              styles.routeItem,
+              selectedRoute?.vehicleId === item.vehicleId && styles.selectedRoute
+            ]}
+            onPress={() => handleRouteSelect(item)}
+          >
+            <Text style={styles.routeTitle}>Route {index + 1}</Text>
+            <Text style={styles.routeDetails}>Stops: {item.stops.length}</Text>
+            <Text style={styles.routeDetails}>
+              Total Time: {Math.round(item.totalTime / 3600)}h {Math.round((item.totalTime % 3600) / 60)}m
+            </Text>
+            <Text style={styles.routeDetails}>
+              Estimated Profit: €{Math.round(item.profit)}
+            </Text>
+          </TouchableOpacity>
+        )}
+      />
     </View>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#f5f5f5',
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
+    fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
-    fontWeight: 'bold',
   },
   routeItem: {
+    backgroundColor: 'white',
     padding: 15,
-    backgroundColor: '#fff',
-    marginBottom: 10,
     borderRadius: 8,
+    marginBottom: 10,
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
-  routeText: {
+  selectedRoute: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#2F67B2',
+    borderWidth: 2,
+  },
+  routeTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    marginBottom: 5,
   },
   routeDetails: {
     fontSize: 14,
-    color: '#555',
+    color: '#666',
+    marginBottom: 3,
   },
 });
-
 
 export default SelectRouteScreen;

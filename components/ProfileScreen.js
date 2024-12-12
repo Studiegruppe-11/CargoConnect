@@ -10,6 +10,7 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import Slider from "@react-native-community/slider";
 import { Picker } from "@react-native-picker/picker";
@@ -17,6 +18,7 @@ import * as Location from 'expo-location';
 import { ref, onValue, update } from "firebase/database";
 import { auth, database } from "../firebaseConfig";
 import { signOut } from "firebase/auth";
+import MapView, { Marker } from 'react-native-maps';
 
 const ProfileScreen = ({ navigation }) => {
   // State variables for user preferences
@@ -24,7 +26,7 @@ const ProfileScreen = ({ navigation }) => {
   const [fuelEconomy, setFuelEconomy] = useState("");
   const [cargoSpace, setCargoSpace] = useState("");
   const [startLatitude, setStartLatitude] = useState('');
-const [startLongitude, setStartLongitude] = useState('');
+  const [startLongitude, setStartLongitude] = useState('');
   const [drivingHours, setDrivingHours] = useState(8);
   const [sleepDuration, setSleepDuration] = useState(8);
   const [preferredCountries, setPreferredCountries] = useState("");
@@ -36,6 +38,11 @@ const [startLongitude, setStartLongitude] = useState('');
   const [currentLongitude, setCurrentLongitude] = useState(null);
   const [availability, setAvailability] = useState(""); // New field
   const [maxCargoVolume, setMaxCargoVolume] = useState(""); // New field
+  const [averageSpeed, setAverageSpeed] = useState(60);
+  const [breakStartWindow, setBreakStartWindow] = useState([6, 8]);
+  const [breakDuration, setBreakDuration] = useState(1);
+  const [useMapPicker, setUseMapPicker] = useState(false);
+  const [mapMarker, setMapMarker] = useState(null);
 
   // Loading state to manage asynchronous data fetching
   const [loading, setLoading] = useState(true);
@@ -88,7 +95,7 @@ const [startLongitude, setStartLongitude] = useState('');
   }, []);
 
   // Function to save/update user preferences to Firebase
-  const savePreferences = () => {
+  const savePreferences = async () => {
     // Validate that all required fields are filled
     if (
       !truckType ||
@@ -125,7 +132,9 @@ const [startLongitude, setStartLongitude] = useState('');
         fuelEfficiency: parseFloat(fuelEfficiency),
         maxDrivingTime,
         availability,
-        averageSpeed: 60, // Default average speed
+        averageSpeed,
+        breakStartWindow,
+        breakDuration,
       };
       
 
@@ -249,23 +258,50 @@ const [startLongitude, setStartLongitude] = useState('');
         keyboardType="numeric"
       />
 
-<Text style={styles.label}>Starting Latitude</Text>
-<TextInput
-  style={styles.input}
-  placeholder="Enter starting latitude"
-  value={startLatitude}
-  onChangeText={setStartLatitude}
-  keyboardType="numeric"
-/>
+      <Text style={styles.label}>Starting Latitude</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter starting latitude"
+        value={startLatitude}
+        onChangeText={setStartLatitude}
+        keyboardType="numeric"
+      />
 
-<Text style={styles.label}>Starting Longitude</Text>
-<TextInput
-  style={styles.input}
-  placeholder="Enter starting longitude"
-  value={startLongitude}
-  onChangeText={setStartLongitude}
-  keyboardType="numeric"
-/>
+      <Text style={styles.label}>Starting Longitude</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter starting longitude"
+        value={startLongitude}
+        onChangeText={setStartLongitude}
+        keyboardType="numeric"
+      />
+
+      <Text style={styles.sectionTitle}>Starting Location</Text>
+      <TouchableOpacity onPress={() => setUseMapPicker(!useMapPicker)}>
+        <Text style={styles.toggleMapText}>
+          {useMapPicker ? "Hide Map" : "Show Map"}
+        </Text>
+      </TouchableOpacity>
+
+      {useMapPicker && (
+        <MapView
+          style={styles.map}
+          onPress={(e) => {
+            const { latitude, longitude } = e.nativeEvent.coordinate;
+            setStartLatitude(latitude.toString());
+            setStartLongitude(longitude.toString());
+            setMapMarker({ latitude, longitude });
+          }}
+          initialRegion={{
+            latitude: parseFloat(startLatitude) || 55.6816,
+            longitude: parseFloat(startLongitude) || 12.5299,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          }}
+        >
+          {mapMarker && <Marker coordinate={mapMarker} />}
+        </MapView>
+      )}
 
       {/* Max Cargo Volume */}
       <Text style={styles.label}>Max Cargo Volume (m³)</Text>
@@ -358,6 +394,38 @@ const [startLongitude, setStartLongitude] = useState('');
         onChangeText={setAvailability}
       />
 
+      <Text style={styles.label}>Average Speed (km/h)</Text>
+      <Slider
+        minimumValue={30}
+        maximumValue={90}
+        step={5}
+        value={averageSpeed}
+        onValueChange={setAverageSpeed}
+        style={styles.slider}
+      />
+
+      <Text style={styles.label}>Break Start Window</Text>
+      <View style={styles.breakWindowContainer}>
+        <TextInput
+          style={[styles.input, styles.halfInput]}
+          placeholder="Start hour"
+          value={breakStartWindow[0].toString()}
+          onChangeText={(text) => 
+            setBreakStartWindow([parseInt(text) || 0, breakStartWindow[1]])
+          }
+          keyboardType="numeric"
+        />
+        <TextInput
+          style={[styles.input, styles.halfInput]}
+          placeholder="End hour"
+          value={breakStartWindow[1].toString()}
+          onChangeText={(text) => 
+            setBreakStartWindow([breakStartWindow[0], parseInt(text) || 0])
+          }
+          keyboardType="numeric"
+        />
+      </View>
+
       {/* Role Selection */}
       <Text style={styles.label}>Role</Text>
       <View style={styles.pickerContainer}>
@@ -436,6 +504,27 @@ const styles = StyleSheet.create({
     marginTop: 30,
     alignSelf: "center",
     width: "60%",
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  toggleMapText: {
+    color: "#1EB1FC",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  map: {
+    height: 200,
+    marginBottom: 20,
+  },
+  breakWindowContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  halfInput: {
+    width: "48%",
   },
 });
 

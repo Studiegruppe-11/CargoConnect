@@ -10,103 +10,85 @@ import { getDatabase, ref, onValue } from 'firebase/database';
 import { auth } from '../firebaseConfig';
 
 
-const RoutesScreen = ({ navigation }) => {
-  const [selectedRoute, setSelectedRoute] = useState(null);
+const RoutesScreen = ({ navigation, route }) => {
   const [optimizedRoutes, setOptimizedRoutes] = useState([]);
-  const [userLocation, setUserLocation] = useState(null);
-  const db = getDatabase();
+  const [selectedRoute, setSelectedRoute] = useState(null);
+  const database = getDatabase();
 
   useEffect(() => {
-    // Fetch user's current location
-    fetchUserLocation();
+    const user = auth.currentUser;
+    if (!user) return;
 
-     // Fetch optimized routes if no selected route
-     if (!selectedRoute) {
-      const optimizedRouteRef = ref(db, 'optimizedRoutes/' + auth.currentUser.uid);
-      onValue(optimizedRouteRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data && data.routes) {
-          setOptimizedRoutes(data.routes);
-        } else {
-          setOptimizedRoutes([]);
-        }
-      });
-    } else {
-      setOptimizedRoutes([selectedRoute]);
-    }
-  }, [selectedRoute]);
-  
-
-  const fetchUserLocation = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Permission to access location was denied.');
-        return;
+    const optimizedRoutesRef = ref(database, `optimizedRoutes/${user.uid}`);
+    const unsubscribe = onValue(optimizedRoutesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && data.routes) {
+        setOptimizedRoutes(data.routes);
       }
-  
-      const location = await Location.getCurrentPositionAsync({});
-      const coords = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
-      setUserLocation(coords);
-    } catch (error) {
-      Alert.alert('Location Error', 'Failed to get current location.');
-      console.error('Location Fetch Error:', error);
-    }
-  };
+    });
 
-  const handleOptimizeRoutes = () => {
+    // Handle selected route from SelectRouteScreen
+    if (route.params?.selectedRoute) {
+      setSelectedRoute(route.params.selectedRoute);
+    }
+
+    return () => unsubscribe();
+  }, [route.params?.selectedRoute]);
+
+  const handleOptimizePress = () => {
     navigation.navigate('OptimizeRoutes');
   };
 
-  const handleSelectRoute = () => {
+  const handleViewRoutes = () => {
     navigation.navigate('SelectRoute', { optimizedRoutes });
   };
 
-  // Define colors for top 3 routes
-const routeColors = ['#FF0000', '#00FF00', '#0000FF']; // Red, Green, Blue
-
   return (
     <SafeAreaView style={styles.container}>
-<MapView style={styles.map}>
-  {optimizedRoutes.slice(0, 3).map((route, index) => (
-    <Polyline
-      key={`route-${index}`}
-      coordinates={route.coordinates}
-      strokeColor={routeColors[index % routeColors.length]}
-      strokeWidth={3}
-    />
-  ))}
-  {/* Optionally, add markers for stops */}
-  {optimizedRoutes.slice(0, 3).map((route) =>
-    route.coordinates.map((coord, idx) => (
-      <Marker
-        key={`${route.vehicleId}-marker-${idx}`}
-        coordinate={coord}
-        title={`Stop ${idx + 1}`}
-        description={`Task ID: ${coord.taskId}`}
-      />
-    ))
-  )}
-</MapView>
+      <MapView style={styles.map}>
+        {selectedRoute ? (
+          <>
+            <Polyline
+              coordinates={selectedRoute.stops.map(stop => stop.coordinates)}
+              strokeColor="#FF0000"
+              strokeWidth={3}
+            />
+            {selectedRoute.stops.map((stop, index) => (
+              <Marker
+                key={`${stop.taskId}-${index}`}
+                coordinate={stop.coordinates}
+                title={`${stop.type} Stop ${index + 1}`}
+                description={`Arrival: ${new Date(stop.arrivalTime * 1000).toLocaleTimeString()}`}
+                pinColor={stop.type === 'Pickup' ? 'green' : 'red'}
+              />
+            ))}
+          </>
+        ) : (
+          optimizedRoutes.map((route, routeIndex) => (
+            <Polyline
+              key={route.vehicleId}
+              coordinates={route.stops.map(stop => stop.coordinates)}
+              strokeColor={`#${Math.floor(Math.random()*16777215).toString(16)}`}
+              strokeWidth={2}
+            />
+          ))
+        )}
+      </MapView>
 
-      {/* Optimize Routes Button */}
-      <TouchableOpacity style={styles.optimizeButton} onPress={handleOptimizeRoutes}>
-        <Icon name="refresh" size={24} color="#fff" />
-        <Text style={styles.buttonText}>Optimize Routes</Text>
-      </TouchableOpacity>
-
-      {/* Select Route Button */}
-      <TouchableOpacity style={styles.selectRouteButton} onPress={handleSelectRoute}>
-        <Icon name="list" size={24} color="#fff" />
-        <Text style={styles.buttonText}>Select Route</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.button} onPress={handleOptimizePress}>
+          <Text style={styles.buttonText}>Optimize Routes</Text>
+        </TouchableOpacity>
+        
+        {optimizedRoutes.length > 0 && (
+          <TouchableOpacity style={styles.button} onPress={handleViewRoutes}>
+            <Text style={styles.buttonText}>View All Routes</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </SafeAreaView>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {
@@ -115,36 +97,27 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  optimizeButton: {
-    position: 'absolute',
-    bottom: 80,
-    left: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2F67B2',
-    padding: 10,
-    borderRadius: 8,
-    opacity: 0.9,
-    zIndex: 1,
-  },
-  selectRouteButton: {
+  buttonContainer: {
     position: 'absolute',
     bottom: 20,
-    left: 20,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2F67B2',
+    justifyContent: 'space-around',
     padding: 10,
+  },
+  button: {
+    backgroundColor: '#2F67B2',
+    padding: 15,
     borderRadius: 8,
-    opacity: 0.9,
-    zIndex: 1,
+    minWidth: 150,
+    alignItems: 'center',
   },
   buttonText: {
     color: '#fff',
-    marginLeft: 8,
     fontSize: 16,
-  },
+    fontWeight: 'bold',
+  }
 });
-
 
 export default RoutesScreen;
