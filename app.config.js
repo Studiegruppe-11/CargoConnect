@@ -45,6 +45,10 @@ export default {
       FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
       GEOCODE_MAPS_APIKEY: process.env.GEOCODE_MAPS_APIKEY,
       NVIDIA_API_KEY: process.env.NVIDIA_API_KEY,
+    },
+    experiments: {
+      tsconfigPaths: true,
+      newArchEnabled: true
     }
   }
 };
