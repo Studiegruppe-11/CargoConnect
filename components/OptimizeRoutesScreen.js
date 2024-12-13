@@ -27,6 +27,7 @@ const haversineDistance = (locA, locB) => {
 
   return distance; // in kilometers
 };
+console.log("test")
 
 const OptimizeRoutesScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
