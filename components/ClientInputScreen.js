@@ -129,6 +129,12 @@ const ClientInputScreen = ({ navigation, route }) => {
   const [isLatestEndPickerVisible, setLatestEndPickerVisibility] =
     useState(false);
 
+  // Add new state variables for delivery constraints
+  const [priority, setPriority] = useState('1');
+  const [isMandatory, setIsMandatory] = useState(false);
+  const [prize, setPrize] = useState('0');
+  const [vehicleTypeRequired, setVehicleTypeRequired] = useState([]);
+
   const db = getDatabase();
   const mapRef = useRef(null); // Reference to MapView
 
@@ -429,6 +435,10 @@ const ClientInputScreen = ({ navigation, route }) => {
       serviceTime: parseInt(serviceTime, 10) * 60, // Convert minutes to seconds
       routeId: routeId || null, // Associate with route if routeId is provided
       status: "pending", // Optional: Add status field
+      priority: parseInt(priority),
+      isMandatory,
+      prize: parseFloat(prize),
+      vehicleTypeRequired,
     };
     try {
       const deliveryRef = ref(db, "deliveries");
@@ -655,6 +665,29 @@ const ClientInputScreen = ({ navigation, route }) => {
         }}
         keyboardType="numeric"
       />
+      {/* Delivery Priority */}
+      <Text style={styles.label}>Delivery Priority (1-10)</Text>
+      <TextInput
+        style={styles.input}
+        value={priority}
+        onChangeText={setPriority}
+        keyboardType="numeric"
+      />
+
+      {/* Prize/Bonus */}
+      <Text style={styles.label}>Prize/Bonus (€)</Text>
+      <TextInput
+        style={styles.input}
+        value={prize}
+        onChangeText={setPrize}
+        keyboardType="numeric"
+      />
+
+      {/* Add checkboxes for vehicle types */}
+      <Text style={styles.label}>Required Vehicle Types</Text>
+      <View style={styles.checkboxContainer}>
+        {/* Add checkboxes for vehicle types */}
+      </View>
       {/* Create Delivery Button */}
       <Button title="Create Delivery" onPress={handleCreateDelivery} />
     </ScrollView>

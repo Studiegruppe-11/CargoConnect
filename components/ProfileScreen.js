@@ -19,431 +19,383 @@ import { ref, onValue, update } from "firebase/database";
 import { auth, database } from "../firebaseConfig";
 import { signOut } from "firebase/auth";
 import MapView, { Marker } from 'react-native-maps';
+import { onAuthStateChanged } from "firebase/auth";
 
 const ProfileScreen = ({ navigation }) => {
-  // State variables for user preferences
-  const [truckType, setTruckType] = useState("");
-  const [fuelEconomy, setFuelEconomy] = useState("");
-  const [cargoSpace, setCargoSpace] = useState("");
+  // Remove duplicate/unnecessary state variables
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Add role selection before vehicle info
+  const [role, setRole] = useState('trucker');
+
+  // Vehicle info
+  const [vehicleId, setVehicleId] = useState(`veh-${auth.currentUser?.uid || 'new'}`);
+  const [maxCargoWeight, setMaxCargoWeight] = useState('');
+  const [maxCargoVolume, setMaxCargoVolume] = useState('');
+
+  // Dimensions
+  const [length, setLength] = useState('');
+  const [width, setWidth] = useState('');
+  const [height, setHeight] = useState('');
+
+  // Location settings
   const [startLatitude, setStartLatitude] = useState('');
   const [startLongitude, setStartLongitude] = useState('');
-  const [drivingHours, setDrivingHours] = useState(8);
-  const [sleepDuration, setSleepDuration] = useState(8);
-  const [preferredCountries, setPreferredCountries] = useState("");
-  const [role, setRole] = useState(null);
-  const [maxCargoWeight, setMaxCargoWeight] = useState("");
-  const [fuelEfficiency, setFuelEfficiency] = useState("");
-  const [maxDrivingTime, setMaxDrivingTime] = useState(8); // in hours
-  const [currentLatitude, setCurrentLatitude] = useState(null);
-  const [currentLongitude, setCurrentLongitude] = useState(null);
-  const [availability, setAvailability] = useState(""); // New field
-  const [maxCargoVolume, setMaxCargoVolume] = useState(""); // New field
-  const [averageSpeed, setAverageSpeed] = useState(60);
-  const [breakStartWindow, setBreakStartWindow] = useState([6, 8]);
-  const [breakDuration, setBreakDuration] = useState(1);
   const [useMapPicker, setUseMapPicker] = useState(false);
   const [mapMarker, setMapMarker] = useState(null);
 
-  // Loading state to manage asynchronous data fetching
-  const [loading, setLoading] = useState(true);
+  // Time constraints
+  const [workStartTime, setWorkStartTime] = useState('8');
+  const [workEndTime, setWorkEndTime] = useState('20');
+  const [maxDrivingTime, setMaxDrivingTime] = useState('12');
+  const [breakStartMin, setBreakStartMin] = useState('12');
+  const [breakStartMax, setBreakStartMax] = useState('13');
+  const [breakDuration, setBreakDuration] = useState('0.5');
 
+  // Efficiency settings
+  const [fuelEfficiency, setFuelEfficiency] = useState('');
+  const [fuelCost, setFuelCost] = useState('0');
+  const [averageSpeed, setAverageSpeed] = useState(60);
+
+  // Trip settings
+  const [skipFirstTrip, setSkipFirstTrip] = useState(false);
+  const [dropReturnTrip, setDropReturnTrip] = useState(false);
+  const [minTasksPerDay, setMinTasksPerDay] = useState('1');
+
+  // Other preferences
+  const [preferredCountries, setPreferredCountries] = useState('');
+  const [availability, setAvailability] = useState('');
+
+  // Add auth state listener
   useEffect(() => {
-    // Fetch user data including role
-    const user = auth.currentUser;
-    if (user) {
-      const userRef = ref(database, "users/" + user.uid);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        navigation.replace('Login');
+        return;
+      }
+      setUser(currentUser);
+      loadUserPreferences(currentUser.uid);
+    });
 
-      const unsubscribe = onValue(
-        userRef,
-        (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            // Set preferences if they exist
-            setTruckType(data.truckType || "");
-            setFuelEconomy(data.fuelEconomy || "");
-            setCargoSpace(data.cargoSpace || "");
-            setDrivingHours(data.drivingHours || 8);
-            setSleepDuration(data.sleepDuration || 8);
-            setPreferredCountries(
-              data.preferredCountries ? data.preferredCountries.join(", ") : ""
-            );
-            setRole(data.role || "trucker"); // Added role
-            setMaxCargoWeight(data.maxCargoWeight ? data.maxCargoWeight.toString() : "");
-            setFuelEfficiency(data.fuelEfficiency ? data.fuelEfficiency.toString() : "");
-            setMaxDrivingTime(data.maxDrivingTime || 8);
-            setAvailability(data.availability || "");
-            setMaxCargoVolume(data.maxCargoVolume ? data.maxCargoVolume.toString() : "");
-            setStartLatitude(data.startLatitude ? data.startLatitude.toString() : '');
-            setStartLongitude(data.startLongitude ? data.startLongitude.toString() : '');
-          }
-          setLoading(false);
-          // Bruges ikke længere, da koordinater indsættes manuelt
-          // fetchUserLocation();
-        },
-        (error) => {
-          console.error("Error fetching user preferences:", error);
-          Alert.alert("Error", "Failed to load preferences.");
-          setLoading(false);
-        }
-      );
+    return () => unsubscribe();
+  }, [navigation]);
 
-      return () => unsubscribe();
-    } else {
+  // Load user preferences
+  const loadUserPreferences = async (uid) => {
+    const userRef = ref(database, `users/${uid}`);
+    onValue(userRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setMaxCargoWeight(data.maxCargoWeight?.toString() || '');
+        setMaxCargoVolume(data.maxCargoVolume?.toString() || '');
+        setStartLatitude(data.startLatitude?.toString() || '');
+        setStartLongitude(data.startLongitude?.toString() || '');
+        setMaxDrivingTime(data.maxDrivingTime?.toString() || '');
+        setBreakStartMin(data.breakStartMin?.toString() || '12');
+        setBreakStartMax(data.breakStartMax?.toString() || '13');
+        setBreakDuration(data.breakDuration?.toString() || '');
+        setFuelEfficiency(data.fuelEfficiency ? data.fuelEfficiency.toString() : "");
+        setPreferredCountries(
+          Array.isArray(data.preferredCountries) 
+            ? data.preferredCountries.join(", ") 
+            : data.preferredCountries || ""
+        );
+        setRole(data.role || "trucker"); // Added role
+        setAvailability(data.availability || "");
+        setStartLatitude(data.startLatitude ? data.startLatitude.toString() : '');
+        setStartLongitude(data.startLongitude ? data.startLongitude.toString() : '');
+        setLength(data.dimensions?.length?.toString() || '');
+        setWidth(data.dimensions?.width?.toString() || '');
+        setHeight(data.dimensions?.height?.toString() || '');
+      }
       setLoading(false);
-      Alert.alert("Authentication Required", "Please log in first.");
-    }
-  }, []);
+    }, {
+      onlyOnce: true
+    });
+  };
 
-  // Function to save/update user preferences to Firebase
+  // Save preferences with user check
   const savePreferences = async () => {
-    // Validate that all required fields are filled
-    if (
-      !truckType ||
-      !fuelEconomy ||
-      !cargoSpace ||
-      !preferredCountries ||
-      !role ||
-      !maxCargoWeight ||
-      !fuelEfficiency ||
-      !availability ||
-      !maxCargoVolume
-    ) {
-      Alert.alert("Missing Information", "Please fill all fields.");
+    if (!user) {
+      Alert.alert('Error', 'Must be logged in to save preferences');
       return;
     }
 
-    const user = auth.currentUser;
-    if (user) {
-      const userRef = ref(database, "users/" + user.uid);
-      const updatedData = {
-        truckType,
-        fuelEconomy,
-        cargoSpace,
-        startLatitude: parseFloat(startLatitude),
-        startLongitude: parseFloat(startLongitude),
-        drivingHours,
-        sleepDuration,
-        preferredCountries: preferredCountries
-          .split(",")
-          .map((country) => country.trim()),
-        role,
-        maxCargoWeight: parseFloat(maxCargoWeight),
-        maxCargoVolume: parseFloat(maxCargoVolume),
-        fuelEfficiency: parseFloat(fuelEfficiency),
-        maxDrivingTime,
-        availability,
-        averageSpeed,
-        breakStartWindow,
-        breakDuration,
-      };
+    const userRef = ref(database, `users/${user.uid}`);
+    const preferences = {
+      vehicleId,
       
+      // Add role before other preferences
+      role, // This will be either 'trucker' or 'company'
 
-      // Update the user's preferences in Firebase
-      update(userRef, updatedData)
-      .then(() => {
-        Alert.alert("Success", "Preferences updated!");
-      })
-      .catch((error) => {
-        console.error("Error updating preferences:", error);
-        Alert.alert("Error", "Failed to update preferences.");
-      });
-    } else {
-      Alert.alert("Authentication Required", "Please log in first.");
+      // Cargo constraints
+      maxCargoWeight: Number(maxCargoWeight) || 5000,
+      maxCargoVolume: Number(maxCargoVolume) || 60,
+      dimensions: {
+        length: parseFloat(length) || 0,
+        width: parseFloat(width) || 0,
+        height: parseFloat(height) || 0
+      },
+
+      // Location
+      startLatitude: parseFloat(startLatitude) || 0,
+      startLongitude: parseFloat(startLongitude) || 0,
+
+      // Time constraints
+      workStartTime: parseFloat(workStartTime) || 8,
+      workEndTime: parseFloat(workEndTime) || 20,
+      maxDrivingTime: Number(maxDrivingTime) || 12,
+      breakStartMin: parseFloat(breakStartMin) || 12,
+      breakStartMax: parseFloat(breakStartMax) || 13,
+      breakDuration: Number(breakDuration) || 0.5,
+
+      // Efficiency
+      fuelEfficiency: Number(fuelEfficiency) || 10,
+      fuelCost: Number(fuelCost) || 0,
+      averageSpeed: Number(averageSpeed) || 60,
+
+      preferredCountries: preferredCountries
+        ? preferredCountries.split(',').map(country => country.trim())
+        : [],
+    };
+
+    try {
+      await update(userRef, preferences);
+      Alert.alert('Success', 'Preferences saved successfully!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save preferences');
+      console.error(error);
     }
   };
 
-  // After fetching user's current location
-  // const fetchUserLocation = async () => {
-  //   try {
-  //     let { status } = await Location.requestForegroundPermissionsAsync();
-  //     if (status !== "granted") {
-  //       Alert.alert(
-  //         "Permission Denied",
-  //         "Permission to access location was denied"
-  //       );
-  //       return;
-  //     }
-
-  //     let location = await Location.getCurrentPositionAsync({});
-  //     setCurrentLatitude(location.coords.latitude);
-  //     setCurrentLongitude(location.coords.longitude);
-
-  //     // Save current location to Firebase
-  //     const userRef = ref(database, "users/" + auth.currentUser.uid);
-  //     await update(userRef, {
-  //       currentLatitude: location.coords.latitude,
-  //       currentLongitude: location.coords.longitude,
-  //     });
-  
-  //     // Confirm that location is saved
-  //     console.log('User location updated:', location.coords);
-  //   } catch (error) {
-  //     Alert.alert("Error", error.message);
-  //   }
-  // };
-
-  // Function to handle user logout
   const handleLogout = () => {
-    Alert.alert(
-      "Confirm Logout",
-      "Are you sure you want to log out?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: () => {
-            signOut(auth)
-              .then(() => {
-                Alert.alert(
-                  "Logged Out",
-                  "You have been logged out successfully."
-                );
-                // Navigation handled by auth state listener
-              })
-              .catch((error) => {
-                console.error("Logout Error:", error);
-                Alert.alert("Logout Error", error.message);
-              });
-          },
-        },
-      ],
-      { cancelable: true }
-    );
+    signOut(auth)
+      .then(() => {
+        navigation.navigate('Login');
+      })
+      .catch((error) => {
+        console.error("Logout error:", error);
+        Alert.alert("Error", "Failed to log out.");
+      });
   };
 
-  // Display a loading indicator while fetching data
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.container}>
         <ActivityIndicator size="large" color="#0000ff" />
-        <Text>Loading Preferences...</Text>
       </View>
     );
   }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>User Preferences</Text>
+      <Text style={styles.title}>User Settings</Text>
 
-      {/* Truck Type */}
-      <Text style={styles.label}>Truck Type</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter truck type"
-        value={truckType}
-        onChangeText={setTruckType}
-      />
-
-      {/* Fuel Economy */}
-      <Text style={styles.label}>Fuel Economy (km/l)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter fuel economy"
-        value={fuelEconomy}
-        onChangeText={setFuelEconomy}
-        keyboardType="numeric"
-      />
-
-      {/* Cargo Space */}
-      <Text style={styles.label}>Cargo Space (m³)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter cargo space"
-        value={cargoSpace}
-        onChangeText={setCargoSpace}
-        keyboardType="numeric"
-      />
-
-      <Text style={styles.label}>Starting Latitude</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter starting latitude"
-        value={startLatitude}
-        onChangeText={setStartLatitude}
-        keyboardType="numeric"
-      />
-
-      <Text style={styles.label}>Starting Longitude</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter starting longitude"
-        value={startLongitude}
-        onChangeText={setStartLongitude}
-        keyboardType="numeric"
-      />
-
-      <Text style={styles.sectionTitle}>Starting Location</Text>
-      <TouchableOpacity onPress={() => setUseMapPicker(!useMapPicker)}>
-        <Text style={styles.toggleMapText}>
-          {useMapPicker ? "Hide Map" : "Show Map"}
-        </Text>
-      </TouchableOpacity>
-
-      {useMapPicker && (
-        <MapView
-          style={styles.map}
-          onPress={(e) => {
-            const { latitude, longitude } = e.nativeEvent.coordinate;
-            setStartLatitude(latitude.toString());
-            setStartLongitude(longitude.toString());
-            setMapMarker({ latitude, longitude });
-          }}
-          initialRegion={{
-            latitude: parseFloat(startLatitude) || 55.6816,
-            longitude: parseFloat(startLongitude) || 12.5299,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
-          }}
-        >
-          {mapMarker && <Marker coordinate={mapMarker} />}
-        </MapView>
-      )}
-
-      {/* Max Cargo Volume */}
-      <Text style={styles.label}>Max Cargo Volume (m³)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter max cargo volume"
-        value={maxCargoVolume}
-        onChangeText={setMaxCargoVolume}
-        keyboardType="numeric"
-      />
-
-      {/* Driving Hours Slider */}
-      <Text style={styles.label}>
-        Preferred Driving Hours per Day: {drivingHours}
-      </Text>
-      <Slider
-        minimumValue={4}
-        maximumValue={12}
-        step={1}
-        value={drivingHours}
-        onValueChange={setDrivingHours}
-        style={styles.slider}
-        minimumTrackTintColor="#1EB1FC"
-        maximumTrackTintColor="#d3d3d3"
-        thumbTintColor="#1EB1FC"
-      />
-
-      {/* Sleep Duration Slider */}
-      <Text style={styles.label}>Sleep Duration (hours): {sleepDuration}</Text>
-      <Slider
-        minimumValue={4}
-        maximumValue={12}
-        step={1}
-        value={sleepDuration}
-        onValueChange={setSleepDuration}
-        style={styles.slider}
-        minimumTrackTintColor="#1EB1FC"
-        maximumTrackTintColor="#d3d3d3"
-        thumbTintColor="#1EB1FC"
-      />
-
-      {/* Max Cargo Weight */}
-      <Text style={styles.label}>Max Cargo Weight (kg)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter max cargo weight"
-        value={maxCargoWeight}
-        onChangeText={setMaxCargoWeight}
-        keyboardType="numeric"
-      />
-
-      {/* Fuel Efficiency */}
-      <Text style={styles.label}>Fuel Efficiency (km/L)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter fuel efficiency"
-        value={fuelEfficiency}
-        onChangeText={setFuelEfficiency}
-        keyboardType="numeric"
-      />
-
-      {/* Max Driving Time */}
-      <Text style={styles.label}>
-        Max Driving Time per Day (hours): {maxDrivingTime}
-      </Text>
-      <Slider
-        minimumValue={1}
-        maximumValue={12}
-        step={1}
-        value={maxDrivingTime}
-        onValueChange={setMaxDrivingTime}
-        style={styles.slider}
-      />
-
-      {/* Preferred Countries */}
-      <Text style={styles.label}>Preferred Countries (comma-separated)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="e.g., Germany, France"
-        value={preferredCountries}
-        onChangeText={setPreferredCountries}
-      />
-
-      {/* Availability */}
-      <Text style={styles.label}>Availability (e.g., Weekdays)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter your availability"
-        value={availability}
-        onChangeText={setAvailability}
-      />
-
-      <Text style={styles.label}>Average Speed (km/h)</Text>
-      <Slider
-        minimumValue={30}
-        maximumValue={90}
-        step={5}
-        value={averageSpeed}
-        onValueChange={setAverageSpeed}
-        style={styles.slider}
-      />
-
-      <Text style={styles.label}>Break Start Window</Text>
-      <View style={styles.breakWindowContainer}>
-        <TextInput
-          style={[styles.input, styles.halfInput]}
-          placeholder="Start hour"
-          value={breakStartWindow[0].toString()}
-          onChangeText={(text) => 
-            setBreakStartWindow([parseInt(text) || 0, breakStartWindow[1]])
-          }
-          keyboardType="numeric"
-        />
-        <TextInput
-          style={[styles.input, styles.halfInput]}
-          placeholder="End hour"
-          value={breakStartWindow[1].toString()}
-          onChangeText={(text) => 
-            setBreakStartWindow([breakStartWindow[0], parseInt(text) || 0])
-          }
-          keyboardType="numeric"
-        />
-      </View>
-
-      {/* Role Selection */}
-      <Text style={styles.label}>Role</Text>
+      {/* Add Role Selection at the top */}
+      <Text style={styles.sectionTitle}>User Role</Text>
       <View style={styles.pickerContainer}>
         <Picker
           selectedValue={role}
           onValueChange={(itemValue) => setRole(itemValue)}
           style={styles.picker}
-          itemStyle={styles.pickerItem} // For iOS
         >
           <Picker.Item label="Trucker" value="trucker" />
           <Picker.Item label="Company" value="company" />
         </Picker>
       </View>
 
-      {/* Save Preferences Button */}
-      <Button title="Update Preferences" onPress={savePreferences} />
+      {/* Only show truck settings if role is trucker */}
+      {role === 'trucker' && (
+        <>
+          <Text style={styles.sectionTitle}>Truck Settings</Text>
 
-      {/* Logout Button */}
+          {/* Dimensions Section */}
+          <Text style={styles.sectionTitle}>Cargo Dimensions</Text>
+          <Text style={styles.label}>Length (meters)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter length"
+            placeholderTextColor="#666"
+            value={length}
+            onChangeText={setLength}
+            keyboardType="decimal-pad"
+          />
+          <Text style={styles.label}>Width (meters)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter width"
+            placeholderTextColor="#666"
+            value={width}
+            onChangeText={setWidth}
+            keyboardType="decimal-pad"
+          />
+          <Text style={styles.label}>Height (meters)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter height"
+            placeholderTextColor="#666"
+            value={height}
+            onChangeText={setHeight}
+            keyboardType="decimal-pad"
+          />
+
+          {/* Cargo Capacity */}
+          <Text style={styles.sectionTitle}>Cargo Capacity</Text>
+          <Text style={styles.label}>Max Cargo Weight (kg)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter max cargo weight"
+            placeholderTextColor="#666"
+            value={maxCargoWeight}
+            onChangeText={setMaxCargoWeight}
+            keyboardType="decimal-pad"
+          />
+          <Text style={styles.label}>Max Cargo Volume (m³)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter max cargo volume"
+            placeholderTextColor="#666"
+            value={maxCargoVolume}
+            onChangeText={setMaxCargoVolume}
+            keyboardType="decimal-pad"
+          />
+
+          {/* Starting Location Section */}
+          <Text style={styles.sectionTitle}>Starting Location</Text>
+          <TouchableOpacity onPress={() => setUseMapPicker(!useMapPicker)}>
+            <Text style={styles.toggleMapText}>
+              {useMapPicker ? "Hide Map" : "Show Map"}
+            </Text>
+          </TouchableOpacity>
+
+          {useMapPicker && (
+            <MapView
+              style={styles.map}
+              onPress={(e) => {
+                const { latitude, longitude } = e.nativeEvent.coordinate;
+                setStartLatitude(latitude.toString());
+                setStartLongitude(longitude.toString());
+                setMapMarker({ latitude, longitude });
+              }}
+              initialRegion={{
+                latitude: parseFloat(startLatitude) || 55.6816,
+                longitude: parseFloat(startLongitude) || 12.5299,
+                latitudeDelta: 0.0922,
+                longitudeDelta: 0.0421,
+              }}
+            >
+              {mapMarker && <Marker coordinate={mapMarker} />}
+            </MapView>
+          )}
+
+          {/* Location Input Fields */}
+          <View>
+            <Text style={styles.label}>Starting Latitude</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter starting latitude"
+              placeholderTextColor="#666"
+              value={startLatitude}
+              onChangeText={setStartLatitude}
+              keyboardType="decimal-pad"
+            />
+
+            <Text style={styles.label}>Starting Longitude</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter starting longitude"
+              placeholderTextColor="#666"
+              value={startLongitude}
+              onChangeText={setStartLongitude}
+              keyboardType="decimal-pad"
+            />
+          </View>
+
+          {/* Time Settings Section */}
+          <Text style={styles.sectionTitle}>Time Settings</Text>
+          <Text style={styles.label}>Work Start Time (24h format)</Text>
+          <TextInput
+            style={styles.input}
+            value={workStartTime}
+            onChangeText={setWorkStartTime}
+            keyboardType="decimal-pad"
+            placeholder="e.g., 8 for 8:00 AM"
+            placeholderTextColor="#666"
+          />
+          <Text style={styles.label}>Work End Time (24h format)</Text>
+          <TextInput
+            style={styles.input}
+            value={workEndTime}
+            onChangeText={setWorkEndTime}
+            keyboardType="decimal-pad"
+            placeholder="e.g., 20 for 8:00 PM"
+            placeholderTextColor="#666"
+          />
+          <Text style={styles.label}>Max Driving Time per Day (hours): {maxDrivingTime}</Text>
+          <Slider
+            minimumValue={1}
+            maximumValue={12}
+            step={1}
+            value={parseFloat(maxDrivingTime)}
+            onValueChange={setMaxDrivingTime}
+            style={styles.slider}
+          />
+
+          {/* Break Settings */}
+          <Text style={styles.label}>Break Window</Text>
+          <View style={styles.breakWindowContainer}>
+            <TextInput
+              style={[styles.input, styles.halfInput]}
+              placeholder="Start hour"
+              placeholderTextColor="#666"
+              value={breakStartMin}
+              onChangeText={setBreakStartMin}
+              keyboardType="decimal-pad"
+            />
+            <TextInput
+              style={[styles.input, styles.halfInput]}
+              placeholder="End hour"
+              placeholderTextColor="#666"
+              value={breakStartMax}
+              onChangeText={setBreakStartMax}
+              keyboardType="decimal-pad"
+            />
+          </View>
+          <Text style={styles.label}>Break Duration (hours)</Text>
+          <TextInput
+            style={styles.input}
+            value={breakDuration}
+            onChangeText={setBreakDuration}
+            keyboardType="decimal-pad"
+            placeholderTextColor="#666"
+          />
+
+          {/* Efficiency Settings */}
+          <Text style={styles.sectionTitle}>Efficiency Settings</Text>
+          <Text style={styles.label}>Fuel Efficiency (km/L)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter fuel efficiency"
+            placeholderTextColor="#666"
+            value={fuelEfficiency}
+            onChangeText={setFuelEfficiency}
+            keyboardType="decimal-pad"
+          />
+          <Text style={styles.label}>Average Speed (km/h): {averageSpeed}</Text>
+          <Slider
+            minimumValue={30}
+            maximumValue={90}
+            step={5}
+            value={averageSpeed}
+            onValueChange={setAverageSpeed}
+            style={styles.slider}
+          />
+        </>
+      )}
+
+      {/* Buttons */}
+      <Button title="Update Preferences" onPress={savePreferences} />
       <View style={styles.logoutButtonContainer}>
         <Button title="Logout" onPress={handleLogout} color="#FF3B30" />
       </View>
@@ -468,6 +420,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 5,
     color: "#333",
+    color: "#1b1811",
   },
   input: {
     height: 40,
@@ -477,11 +430,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 5,
     backgroundColor: "#fff",
+    color: "#000",
+    fontSize: 16,
   },
+
   label: {
     fontSize: 16,
     marginBottom: 5,
     color: "#333",
+    fontWeight: "500",
   },
   pickerContainer: {
     borderColor: "gray",
