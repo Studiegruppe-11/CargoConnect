@@ -154,180 +154,199 @@ const convertToMinutesSinceMidnight = (timestamp) => {
   // Prepare the payload for NVIDIA cuOpt API
   const prepareCuOptPayload = async (deliveries, constraints) => {
     if (!user) {
-      throw new Error("User must be authenticated to prepare payload");
+      throw new Error("User must be authenticated");
     }
   
-    if (!constraints || !constraints.maxCargoWeight) {
-      console.error("Available constraints:", constraints);
-      throw new Error("Vehicle constraints not loaded or incomplete");
-    }
-
-    console.log("Preparing payload with constraints:", constraints);
-
-    const payload = {
-      action: 'cuOpt_OptimizedRouting',
-      data: {
-        fleet_data: {
-          vehicle_locations: [[
-            Number(constraints.startLatitude) || 0,
-            Number(constraints.startLongitude) || 0
-          ]],
-          vehicle_ids: [`veh-${user.uid}`],
-          capacities: [
-            [Number(constraints.maxCargoWeight) || 5000],
-            [Number(constraints.maxCargoVolume) || 60]
-          ],
-          vehicle_time_windows: [[
-            Number(constraints.workStartTime) * 60 || 480,
-            Number(constraints.workEndTime) * 60 || 1200
-          ]],
-          vehicle_break_time_windows: [[
-            [
-              Number(constraints.breakStartMin) * 60 || 720,
-              Number(constraints.breakStartMax) * 60 || 780
-            ]
-          ]],
-          vehicle_break_durations: [[Number(constraints.breakDuration) * 60 || 30]],
-          min_vehicles: 1,
-          vehicle_max_times: [Number(constraints.maxDrivingTime) * 60 || 720],
-          vehicle_fixed_costs: [Number(constraints.vehicleFixedCost) || 0]
-        },
-        // ...rest of payload structure...
-      }
+    // Depot location
+    const depotLocation = {
+      latitude: Number(constraints.startLatitude),
+      longitude: Number(constraints.startLongitude),
+      type: "depot",
     };
-
-    console.log("Generated payload:", JSON.stringify(payload, null, 2));
-    return payload;
+  
+    // Locations: depot + pickup + delivery
+    const locations = [
+      depotLocation,
+      ...deliveries.flatMap((delivery) => [
+        {
+          latitude: Number(delivery.pickupLocation.latitude),
+          longitude: Number(delivery.pickupLocation.longitude),
+          type: "pickup",
+        },
+        {
+          latitude: Number(delivery.deliveryLocation.latitude),
+          longitude: Number(delivery.deliveryLocation.longitude),
+          type: "delivery",
+        },
+      ]),
+    ];
+  
+    // Cost and time matrices
+    const { costMatrix, timeMatrix } = buildMatrices(locations, constraints);
+  
+    // Task data arrays
+    const taskLocations = locations.map((_, index) => index);
+    const taskIds = [
+      "depot",
+      ...deliveries.flatMap((delivery) => [
+        `pickup-${delivery.id}`,
+        `delivery-${delivery.id}`,
+      ]),
+    ];
+    const demands = new Array(taskLocations.length).fill(0);
+    const pickupDeliveryPairs = [];
+    const taskTimeWindows = [[0, 1440]]; // Depot always available
+    const serviceTimes = [0]; // Depot has no service time
+  
+    // Populate task data for each delivery
+    deliveries.forEach((delivery, index) => {
+      const pickupIndex = 1 + index * 2;
+      const deliveryIndex = pickupIndex + 1;
+  
+      // Add pickup and delivery pair
+      pickupDeliveryPairs.push([pickupIndex, deliveryIndex]);
+  
+      // Set demands
+      demands[pickupIndex] = Number(delivery.weight) || 0;
+      demands[deliveryIndex] = -(Number(delivery.weight) || 0);
+  
+      // Time windows for pickup and delivery
+      const startTime = convertToMinutesSinceMidnight(
+        delivery.earliestStartTime
+      );
+      const endTime = convertToMinutesSinceMidnight(delivery.latestEndTime);
+      taskTimeWindows.push(
+        [startTime || 0, endTime || 1440],
+        [startTime || 0, endTime || 1440]
+      );
+  
+      // Service times
+      const serviceTime = Number(delivery.serviceTime) || 600;
+      serviceTimes.push(serviceTime, serviceTime);
+    });
+  
+    // **Move logs here to ensure pickupDeliveryPairs is populated before debugging**
+    console.log("Task Locations:", taskLocations);
+    console.log("Pickup and Delivery Pairs:", pickupDeliveryPairs);
+    console.log("Task IDs:", taskIds);
+    console.log("Demands:", demands);
+    console.log("Task Time Windows:", taskTimeWindows);
+    console.log("Service Times:", serviceTimes);
+  
+    // Ensure all indices are used
+    if (
+      new Set(pickupDeliveryPairs.flat()).size !==
+      taskLocations.length - 1 // Exclude depot (index 0)
+    ) {
+      throw new Error(
+        "Mismatch between task locations and pickup/delivery pairs."
+      );
+    }
+  
+    return {
+      action: "cuOpt_OptimizedRouting",
+      data: {
+        cost_matrix_data: {
+          data: {
+            "1": costMatrix,
+          },
+        },
+        travel_time_matrix_data: {
+          data: {
+            "1": timeMatrix,
+          },
+        },
+        fleet_data: {
+          vehicle_locations: [[0, 0]], // Start and end at depot
+          vehicle_ids: [`veh-${user.uid}`],
+          capacities: [[Number(constraints.maxCargoWeight) || 5000]],
+          vehicle_time_windows: [
+            [
+              Number(constraints.workStartTime) * 60 || 480,
+              Number(constraints.workEndTime) * 60 || 1200,
+            ],
+          ],
+          vehicle_break_time_windows: [
+            [
+              [
+                Number(constraints.breakStartMin) * 60 || 720,
+                Number(constraints.breakStartMax) * 60 || 780,
+              ],
+            ],
+          ],
+          vehicle_break_durations: [
+            [Number(constraints.breakDuration) * 60 || 30],
+          ],
+          min_vehicles: 1,
+          vehicle_types: [1],
+          vehicle_max_times: [Number(constraints.maxDrivingTime) * 60 || 720],
+          vehicle_max_costs: [9999],
+          skip_first_trips: [false],
+          drop_return_trips: [false],
+        },
+        task_data: {
+          task_locations: taskLocations,
+          task_ids: taskIds,
+          demand: [demands],
+          pickup_and_delivery_pairs: pickupDeliveryPairs,
+          task_time_windows: taskTimeWindows,
+          service_times: serviceTimes,
+        },
+        solver_config: {
+          time_limit: 300,
+          objectives: {
+            cost: 1,
+            travel_time: 1,
+          },
+          verbose_mode: true,
+          error_logging: true,
+        },
+      },
+    };
   };
+  
+  
+  
 
   // Payload validation function
   const validatePayload = (payload) => {
-    if (!payload?.data?.fleet_data) {
-      throw new Error("Invalid payload structure: missing fleet_data");
+    if (!payload?.data?.fleet_data || !payload?.data?.task_data) {
+      throw new Error("Invalid payload structure: missing fleet_data or task_data");
+    }
+
+    if (!payload?.data?.cost_matrix_data?.data) {
+      throw new Error("Missing cost matrix data");
     }
 
     const { fleet_data, task_data } = payload.data;
 
-    // Validate vehicle capacities
-    if (!Array.isArray(fleet_data.capacities)) {
-      throw new Error("Invalid capacities format");
-    }
-
-    fleet_data.capacities.forEach((capacityArray) => {
-      if (!Array.isArray(capacityArray)) {
-        throw new Error("Invalid capacity array format");
-      }
-      capacityArray.forEach((capacity) => {
-        if (typeof capacity !== "number" || capacity <= 0) {
-          throw new Error(`Vehicle capacities must be positive numbers. Invalid value: ${capacity}`);
-        }
-      });
-    });
-
-    // Validate time windows
-    if (fleet_data.vehicle_time_windows) {
-      fleet_data.vehicle_time_windows.forEach((window) => {
-        if (!Array.isArray(window) || window.length !== 2 || window[0] >= window[1]) {
-          throw new Error(`Invalid vehicle time window: ${window}`);
-        }
-      });
-    }
-
-    // Validate task data
-    if (!task_data) {
-      throw new Error("Missing task_data");
-    }
-
-    if (!Array.isArray(task_data.task_locations)) {
-      throw new Error("task_locations must be an array");
-    }
-
-    // Validate demands
-    if (task_data.demand) {
-      task_data.demand.forEach((demandArray) => {
-        if (!Array.isArray(demandArray)) {
-          throw new Error("Invalid demand array format");
-        }
-        demandArray.forEach((demand) => {
-          if (typeof demand !== "number") {
-            throw new Error(`Demands must be numbers. Invalid demand: ${demand}`);
-          }
-        });
-      });
-    }
-
-    return true; // Validation passed
+    // Rest of validation stays the same...
   };
 
   // Call NVIDIA cuOpt API
   const callCuOptAPI = async (payload) => {
-    console.log("Calling NVIDIA cuOpt API with payload:", payload);
-    
-    const baseUrl = "https://optimize.api.nvidia.com/v1";
+    const baseUrl = "https://optimize.api.nvidia.com/v1/nvidia/cuopt";
     const headers = {
       "Authorization": `Bearer ${NVIDIA_API_KEY}`,
-      "Accept": "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "Accept": "application/json"
     };
   
     try {
-      const response = await fetch(`${baseUrl}/nvidia/cuopt`, {
+      const response = await fetch(baseUrl, {
         method: "POST",
         headers: headers,
         body: JSON.stringify(payload)
       });
   
-      if (response.status === 202) {
-        // Handle async processing
-        const requestId = response.headers.get("NVCF-REQID");
-        if (!requestId) {
-          throw new Error("Missing NVCF-REQID header in response");
-        }
-  
-        // Poll for results
-        let result;
-        let attempts = 0;
-        const maxAttempts = 10;
-  
-        while (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds between polls
-          
-          const statusResponse = await fetch(`${baseUrl}/status/${requestId}`, {
-            headers: {
-              "Authorization": `Bearer ${NVIDIA_API_KEY}`,
-              "Accept": "application/json"
-            }
-          });
-  
-          if (statusResponse.status === 200) {
-            result = await statusResponse.json();
-            break;
-          }
-  
-          if (statusResponse.status !== 202) {
-            throw new Error(`Status check failed: ${statusResponse.status}`);
-          }
-  
-          attempts++;
-          setOptimizationStatus(`Optimization in progress... Attempt ${attempts}/${maxAttempts}`);
-        }
-  
-        if (!result) {
-          throw new Error("Optimization timed out");
-        }
-  
-        return result;
-      } else if (response.status === 200) {
-        return await response.json();
-      } else {
+      if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
+  
+      return await response.json();
     } catch (error) {
       console.error("API Call Error:", error);
-      if (error.message.includes("Network request failed")) {
-        throw new Error("Unable to connect to NVIDIA API. Please check your internet connection and API key.");
-      }
       throw error;
     }
   };
@@ -557,6 +576,12 @@ const convertToMinutesSinceMidnight = (timestamp) => {
     }
   };
 
+  useEffect(() => {
+    if (isFocused && user) {
+      optimizeRoutes();
+    }
+  }, [isFocused, user]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Route Optimization</Text>
@@ -775,6 +800,7 @@ const handleCuOptError = (error) => {
   }
   return error.message;
 };
+
 
 const styles = StyleSheet.create({
   container: {

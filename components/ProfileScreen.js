@@ -15,7 +15,7 @@ import {
 import Slider from "@react-native-community/slider";
 import { Picker } from "@react-native-picker/picker";
 import * as Location from 'expo-location';
-import { ref, onValue, update } from "firebase/database";
+import { ref, onValue, update, set } from "firebase/database";
 import { auth, database } from "../firebaseConfig";
 import { signOut } from "firebase/auth";
 import MapView, { Marker } from 'react-native-maps';
