@@ -6,7 +6,7 @@ import { getDatabase, ref, onValue, set } from "firebase/database";
 import { auth, NVIDIA_API_KEY } from "../firebaseConfig";
 import { useIsFocused } from "@react-navigation/native";
 import { onAuthStateChanged } from 'firebase/auth';
-import { getDistanceMatrix } from '../utils/distanceMatrix';
+import { getDistanceMatrix } from '../utils/routeMatrix';
 
 // -------------------------------------
 // Utility Functions

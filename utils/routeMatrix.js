@@ -13,7 +13,7 @@ export const getDistanceMatrix = async (origins, destinations) => {
     for (let i = 0; i < originBatches.length; i++) {
       for (let j = 0; j < destinationBatches.length; j++) {
         const response = await fetch(
-          'https://routes.googleapis.com/directions/v2:computeRouteMatrix',
+          'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix',  // Fixed URL
           {
             method: 'POST',
             headers: {
@@ -69,36 +69,40 @@ export const getDistanceMatrix = async (origins, destinations) => {
     return {
       distances: allDistances,
       durations: allDurations,
-      routes: allRoutes // Added routes array containing polylines
+      routes: allRoutes
     };
 
   } catch (error) {
     console.error('Route Matrix Error:', error);
-    // Fallback to haversine calculation
-    const distances = origins.map(origin => 
-      destinations.map(dest => {
-        const R = 6371;
-        const dLat = (dest.latitude - origin.latitude) * Math.PI / 180;
-        const dLon = (dest.longitude - origin.longitude) * Math.PI / 180;
-        const a = 
-          Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(origin.latitude * Math.PI / 180) * Math.cos(dest.latitude * Math.PI / 180) * 
-          Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
-      })
-    );
-
-    const durations = distances.map(row => 
-      row.map(distance => Math.ceil(distance / 60 * 60))
-    );
-
-    return {
-      distances,
-      durations,
-      routes: Array(origins.length).fill().map(() => Array(destinations.length).fill(null))
-    };
+    // Fallback calculation remains the same...
+    return fallbackCalculation(origins, destinations);
   }
+};
+
+const fallbackCalculation = (origins, destinations) => {
+  const distances = origins.map(origin => 
+    destinations.map(dest => {
+      const R = 6371;
+      const dLat = (dest.latitude - origin.latitude) * Math.PI / 180;
+      const dLon = (dest.longitude - origin.longitude) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(origin.latitude * Math.PI / 180) * Math.cos(dest.latitude * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    })
+  );
+
+  const durations = distances.map(row => 
+    row.map(distance => Math.ceil(distance / 60 * 60))
+  );
+
+  return {
+    distances,
+    durations,
+    routes: Array(origins.length).fill().map(() => Array(destinations.length).fill(null))
+  };
 };
 
 const chunk = (array, size) => {
