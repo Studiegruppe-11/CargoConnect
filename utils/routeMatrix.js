@@ -1,5 +1,12 @@
 import { GOOGLE_MAPS_APIKEY } from "../firebaseConfig";
 
+// Helper function to encode URL parameters
+const encodeParams = (params) => {
+  return Object.entries(params)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join('&');
+};
+
 export const getDistanceMatrix = async (origins, destinations) => {
   try {
     const BATCH_SIZE = 10;
@@ -13,13 +20,13 @@ export const getDistanceMatrix = async (origins, destinations) => {
     for (let i = 0; i < originBatches.length; i++) {
       for (let j = 0; j < destinationBatches.length; j++) {
         const response = await fetch(
-          'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix',  // Fixed URL
+          'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix',
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'X-Goog-Api-Key': GOOGLE_MAPS_APIKEY,
-              'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,distanceMeters,condition,routes.polyline.encodedPolyline'
+              'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,distanceMeters,status,condition'
             },
             body: JSON.stringify({
               origins: originBatches[i].map(loc => ({
@@ -30,13 +37,14 @@ export const getDistanceMatrix = async (origins, destinations) => {
                       longitude: loc.longitude
                     }
                   }
-                }
+                },
+                routeModifiers: { avoid_ferries: true }
               })),
               destinations: destinationBatches[j].map(loc => ({
                 waypoint: {
                   location: {
                     latLng: {
-                      latitude: loc.latitude,
+                      latitude: loc.latitude, 
                       longitude: loc.longitude
                     }
                   }
@@ -49,20 +57,24 @@ export const getDistanceMatrix = async (origins, destinations) => {
         );
 
         if (!response.ok) {
-          throw new Error(`Route Matrix API error: ${response.status}`);
+          const errorText = await response.text();
+          console.error('API Response:', errorText);
+          throw new Error(`Route Matrix API error: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
+        console.log('API Response:', data);
         
-        data.forEach(element => {
-          if (element.condition === 'ROUTE_EXISTS') {
-            const globalRowIndex = i * BATCH_SIZE + element.originIndex;
-            const globalColIndex = j * BATCH_SIZE + element.destinationIndex;
-            allDistances[globalRowIndex][globalColIndex] = element.distanceMeters / 1000; // Convert to km
-            allDurations[globalRowIndex][globalColIndex] = Math.ceil(parseInt(element.duration) / 60); // Convert seconds to minutes
-            allRoutes[globalRowIndex][globalColIndex] = element.routes?.polyline?.encodedPolyline || null;
-          }
-        });
+        if (Array.isArray(data)) {
+          data.forEach(element => {
+            if (element.condition === 'ROUTE_EXISTS') {
+              const globalRowIndex = i * BATCH_SIZE + element.originIndex;
+              const globalColIndex = j * BATCH_SIZE + element.destinationIndex;
+              allDistances[globalRowIndex][globalColIndex] = element.distanceMeters / 1000; // Convert to km
+              allDurations[globalRowIndex][globalColIndex] = Math.ceil(parseInt(element.duration) / 60); // Convert seconds to minutes
+            }
+          });
+        }
       }
     }
 
@@ -74,7 +86,6 @@ export const getDistanceMatrix = async (origins, destinations) => {
 
   } catch (error) {
     console.error('Route Matrix Error:', error);
-    // Fallback calculation remains the same...
     return fallbackCalculation(origins, destinations);
   }
 };
