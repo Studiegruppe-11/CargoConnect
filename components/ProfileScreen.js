@@ -199,9 +199,18 @@ const ProfileScreen = ({ navigation }) => {
           selectedValue={role}
           onValueChange={(itemValue) => setRole(itemValue)}
           style={styles.picker}
+          itemStyle={styles.pickerItem}
         >
-          <Picker.Item label="Trucker" value="trucker" />
-          <Picker.Item label="Company" value="company" />
+          <Picker.Item 
+            label="Trucker" 
+            value="trucker"
+            color="#333" // Added explicit color 
+          />
+          <Picker.Item 
+            label="Company" 
+            value="company" 
+            color="#333" // Added explicit color
+          />
         </Picker>
       </View>
 
@@ -441,21 +450,21 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   pickerContainer: {
-    borderColor: "gray",
-    borderWidth: 0,
+    borderColor: "#ccc",
+    borderWidth: 1,
     borderRadius: 5,
     marginBottom: 20,
     overflow: "hidden",
-    backgroundColor: "#fff", // Ensure background is white
+    backgroundColor: "#fff",
   },
   picker: {
     height: 50,
     width: "100%",
-    color: "#000", // Set text color to black
+    color: "#333", // Changed from #000 to make text more visible
   },
   pickerItem: {
     height: 50,
-    color: "#000", // For iOS Picker items
+    color: "#333", // Changed from #000 for consistency
   },
   logoutButtonContainer: {
     marginTop: 30,
