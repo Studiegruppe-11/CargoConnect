@@ -1,4 +1,5 @@
-import { GOOGLE_MAPS_APIKEY } from "../firebaseConfig";
+// utils/routeMatrix.js
+import { GOOGLE_MAPS_API_KEY } from "../firebaseConfig";
 
 // Helper function to encode URL parameters
 const encodeParams = (params) => {
@@ -7,8 +8,17 @@ const encodeParams = (params) => {
     .join('&');
 };
 
+const chunk = (array, size) => {
+  const chunks = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+};
+
 export const getDistanceMatrix = async (origins, destinations) => {
   try {
+    console.log('apiKey:', GOOGLE_MAPS_API_KEY);
     const BATCH_SIZE = 10;
     const originBatches = chunk(origins, BATCH_SIZE);
     const destinationBatches = chunk(destinations, BATCH_SIZE);
@@ -19,13 +29,14 @@ export const getDistanceMatrix = async (origins, destinations) => {
 
     for (let i = 0; i < originBatches.length; i++) {
       for (let j = 0; j < destinationBatches.length; j++) {
+        console.log('Processing batch:', i, j);
         const response = await fetch(
           'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix',
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-Goog-Api-Key': GOOGLE_MAPS_APIKEY,
+              'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
               'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,distanceMeters,status,condition'
             },
             body: JSON.stringify({
@@ -63,15 +74,33 @@ export const getDistanceMatrix = async (origins, destinations) => {
         }
 
         const data = await response.json();
-        console.log('API Response:', data);
-        
+        console.log('Matrix Route API Response received:'/*, data*/);
+
         if (Array.isArray(data)) {
           data.forEach(element => {
-            if (element.condition === 'ROUTE_EXISTS') {
-              const globalRowIndex = i * BATCH_SIZE + element.originIndex;
-              const globalColIndex = j * BATCH_SIZE + element.destinationIndex;
-              allDistances[globalRowIndex][globalColIndex] = element.distanceMeters / 1000; // Convert to km
-              allDurations[globalRowIndex][globalColIndex] = Math.ceil(parseInt(element.duration) / 60); // Convert seconds to minutes
+            const globalRowIndex = i * BATCH_SIZE + element.originIndex;
+            const globalColIndex = j * BATCH_SIZE + element.destinationIndex;
+
+            if (
+              element.condition === 'ROUTE_EXISTS' &&
+              element.distanceMeters != null &&
+              element.duration != null
+            ) {
+              const distanceValue = Number(element.distanceMeters);
+              const durationSeconds = parseInt(element.duration, 10);
+
+              if (!isNaN(distanceValue) && !isNaN(durationSeconds)) {
+                allDistances[globalRowIndex][globalColIndex] = distanceValue / 1000.0; // Convert meters to km
+                allDurations[globalRowIndex][globalColIndex] = Math.ceil(durationSeconds / 60); // Convert seconds to minutes
+              } else {
+                // If values are NaN or invalid, set them to 0
+                allDistances[globalRowIndex][globalColIndex] = 0;
+                allDurations[globalRowIndex][globalColIndex] = 0;
+              }
+            } else {
+              // If not ROUTE_EXISTS or missing values, keep them as 0
+              allDistances[globalRowIndex][globalColIndex] = 0;
+              allDurations[globalRowIndex][globalColIndex] = 0;
             }
           });
         }
@@ -106,7 +135,7 @@ const fallbackCalculation = (origins, destinations) => {
   );
 
   const durations = distances.map(row => 
-    row.map(distance => Math.ceil(distance / 60 * 60))
+    row.map(distance => Math.ceil(distance)) // Just approximate 1 km = 1 min if fallback
   );
 
   return {
@@ -114,12 +143,4 @@ const fallbackCalculation = (origins, destinations) => {
     durations,
     routes: Array(origins.length).fill().map(() => Array(destinations.length).fill(null))
   };
-};
-
-const chunk = (array, size) => {
-  const chunks = [];
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size));
-  }
-  return chunks;
 };

@@ -12,7 +12,6 @@ import { getDatabase, ref, onValue } from 'firebase/database';
 // Import Screens
 import ClientInputScreen from '../components/ClientInputScreen';
 import MapScreen from '../components/MapScreen';
-import TruckerInputScreen from '../components/TruckerInputScreen';
 import DeliveryDetailsScreen from '../components/DeliveryDetailsScreen';
 import RoutesScreen from '../components/RoutesScreen';
 import LoginScreen from '../components/LoginScreen';
@@ -20,6 +19,8 @@ import RegisterScreen from '../components/RegisterScreen';
 import OptimizeRoutesScreen from '../components/OptimizeRoutesScreen'; 
 import SelectRouteScreen from '../components/SelectRouteScreen'; 
 import ProfileScreen from '../components/ProfileScreen';
+import RouteListScreen from '../components/RouteListScreen';
+import RouteDetailsScreen from '../components/RouteDetailsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -41,6 +42,9 @@ function RoutesStack() {
       <Stack.Screen name="RoutesHome" component={RoutesScreen} />
       <Stack.Screen name="OptimizeRoutes" component={OptimizeRoutesScreen} />
       <Stack.Screen name="SelectRoute" component={SelectRouteScreen} />
+      <Stack.Screen name="RouteList" component={RouteListScreen} />
+      <Stack.Screen name="RouteDetails" component={RouteDetailsScreen} />
+
     </Stack.Navigator>
   );
 }

@@ -15,7 +15,7 @@ const {
   FIREBASE_APP_ID,
   GEOCODE_MAPS_APIKEY,
   NVIDIA_API_KEY,
-  GOOGLE_MAPS_APIKEY,
+  GOOGLE_MAPS_API_KEY,
 } = Constants.expoConfig.extra;
 
 const firebaseConfig = {
@@ -42,4 +42,4 @@ const auth = initializeAuth(app, {
 });
 const database = getDatabase(app);
 
-export { app, auth, database, GEOCODE_MAPS_APIKEY, NVIDIA_API_KEY, GOOGLE_MAPS_APIKEY };
+export { app, auth, database, GEOCODE_MAPS_APIKEY, NVIDIA_API_KEY, GOOGLE_MAPS_API_KEY };
