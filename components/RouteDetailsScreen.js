@@ -45,7 +45,7 @@ const RouteDetailsScreen = ({ route }) => {
         {stops.map((stop, index) => (
           <Marker
             key={index}
-            coordinate={{ latitude: stop.location.latitude, longitude: stop.location.longitude }}
+            coordinate={{ latitude: stop.coordinates.latitude, longitude: stop.coordinates.longitude }}
             title={`${stop.type} - ${stop.taskId}`}
             description={`Arrival: ${stop.arrivalTime}`}
             pinColor={stop.type === 'Pickup' ? 'green' : (stop.type === 'Delivery' ? 'red' : 'blue')}

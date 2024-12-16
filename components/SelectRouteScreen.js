@@ -7,10 +7,11 @@ const SelectRouteScreen = ({ navigation, route }) => {
   const { optimizedRoutes } = route.params || {};
   const [selectedRoute, setSelectedRoute] = useState(null);
 
-  const handleRouteSelect = (route) => {
-    setSelectedRoute(route);
-    navigation.navigate('RoutesHome', { selectedRoute: route });
+  const handleRouteSelect = (selectedRoute) => {
+    setSelectedRoute(selectedRoute);
+    navigation.navigate('RouteDetails', { route: selectedRoute });
   };
+  
 
   return (
     <View style={styles.container}>

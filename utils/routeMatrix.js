@@ -18,7 +18,6 @@ const chunk = (array, size) => {
 
 export const getDistanceMatrix = async (origins, destinations) => {
   try {
-    console.log('apiKey:', GOOGLE_MAPS_API_KEY);
     const BATCH_SIZE = 10;
     const originBatches = chunk(origins, BATCH_SIZE);
     const destinationBatches = chunk(destinations, BATCH_SIZE);

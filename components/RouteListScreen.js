@@ -35,8 +35,8 @@ const RouteListScreen = ({ navigation }) => {
     return () => unsubscribe();
   }, []);
 
-  const handleRouteSelect = (routeItem) => {
-    navigation.navigate('RouteDetails', { route: routeItem });
+  const handleRouteSelect = (item) => {
+    navigation.navigate('RouteDetails', { route: item });
   };
 
   if (loading) {

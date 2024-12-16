@@ -563,7 +563,7 @@ const OptimizeRoutesScreen = ({ navigation }) => {
           />
           <Button 
             title="View Details of a Specific Route" 
-            onPress={() => navigation.navigate('RouteDetails')} 
+            onPress={() => navigation.navigate('RouteDetails', { route: route })} 
           />
         </View>
       )}
