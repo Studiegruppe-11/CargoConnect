@@ -1,4 +1,3 @@
-// /utils/internFetcher.js
 // utils/internFetcher.js
 import { getDatabase, ref, onValue } from "firebase/database";
 import { auth } from "../firebaseConfig";

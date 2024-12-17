@@ -10,17 +10,17 @@ import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { getDatabase, ref, onValue } from 'firebase/database';
 
 // Import Screens
-import ClientInputScreen from '../components/ClientInputScreen';
-import MapScreen from '../components/MapScreen';
-import DeliveryDetailsScreen from '../components/DeliveryDetailsScreen';
-import RoutesScreen from '../components/RoutesScreen';
-import LoginScreen from '../components/LoginScreen';
-import RegisterScreen from '../components/RegisterScreen';
-import OptimizeRoutesScreen from '../components/OptimizeRoutesScreen'; 
-import SelectRouteScreen from '../components/SelectRouteScreen'; 
-import ProfileScreen from '../components/ProfileScreen';
-import RouteListScreen from '../components/RouteListScreen';
-import RouteDetailsScreen from '../components/RouteDetailsScreen';
+import ClientInputScreen from '../components/createDelivery';
+import MapScreen from '../components/Map';
+import DeliveryDetailsScreen from '../components/DeliveryDetails';
+// import RoutesScreen from '../components/RoutesScreen';
+import LoginScreen from '../components/Login';
+import RegisterScreen from '../components/Register';
+import OptimizeRoutesScreen from '../components/OptimizeRoutes'; 
+// import SelectRouteScreen from '../components/SelectRouteScreen'; 
+import ProfileScreen from '../components/Profile';
+import RouteListScreen from '../components/RouteList';
+import RouteDetailsScreen from '../components/RouteDetails';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -39,9 +39,7 @@ function MapStack() {
 function RoutesStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="RoutesHome" component={RoutesScreen} />
-      <Stack.Screen name="OptimizeRoutes" component={OptimizeRoutesScreen} />
-      <Stack.Screen name="SelectRoute" component={SelectRouteScreen} />
+      <Stack.Screen name="RoutesHome" component={OptimizeRoutesScreen} />
       <Stack.Screen name="RouteList" component={RouteListScreen} />
       <Stack.Screen name="RouteDetails" component={RouteDetailsScreen} />
 

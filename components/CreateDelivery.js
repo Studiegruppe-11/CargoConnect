@@ -1,4 +1,4 @@
-// components/ClientInputScreen.js
+// components/CreateDelivery.js
 
 import React, { useState, useEffect, useRef } from "react";
 import {
@@ -130,9 +130,9 @@ const ClientInputScreen = ({ navigation, route }) => {
     useState(false);
 
   // Add new state variables for delivery constraints
-  const [priority, setPriority] = useState('1');
+  const [priority, setPriority] = useState("1");
   const [isMandatory, setIsMandatory] = useState(false);
-  const [prize, setPrize] = useState('0');
+  const [prize, setPrize] = useState("0");
   const [vehicleTypeRequired, setVehicleTypeRequired] = useState([]);
 
   const db = getDatabase();
@@ -401,22 +401,22 @@ const ClientInputScreen = ({ navigation, route }) => {
       );
       return;
     }
-      // Ensure pickupCoordinates and deliveryCoordinates have latitude and longitude
+    // Ensure pickupCoordinates and deliveryCoordinates have latitude and longitude
     if (
       !pickupCoordinates ||
       pickupCoordinates.latitude === undefined ||
       pickupCoordinates.longitude === undefined
     ) {
-      Alert.alert('Error', 'Invalid pickup coordinates.');
+      Alert.alert("Error", "Invalid pickup coordinates.");
       return;
     }
-  
+
     if (
       !deliveryCoordinates ||
       deliveryCoordinates.latitude === undefined ||
       deliveryCoordinates.longitude === undefined
     ) {
-      Alert.alert('Error', 'Invalid delivery coordinates.');
+      Alert.alert("Error", "Invalid delivery coordinates.");
       return;
     }
     const newDelivery = {
@@ -529,12 +529,12 @@ const ClientInputScreen = ({ navigation, route }) => {
         <MapView
           style={styles.map}
           onPress={handleDeliveryMapPress}
-  initialRegion={{
-    latitude: mapMarker ? mapMarker.latitude : 55.68162938805638,
-    longitude: mapMarker ? mapMarker.longitude : 12.529937312745204,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-  }}
+          initialRegion={{
+            latitude: mapMarker ? mapMarker.latitude : 55.68162938805638,
+            longitude: mapMarker ? mapMarker.longitude : 12.529937312745204,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          }}
         >
           {deliveryMarker && (
             <Marker coordinate={deliveryMarker} title="Delivery Location" />
@@ -610,38 +610,38 @@ const ClientInputScreen = ({ navigation, route }) => {
       />
       {/* Earliest Start Time */}
       <Text style={styles.label}>Earliest Start Time</Text>
-<TouchableOpacity onPress={() => setEarliestStartPickerVisibility(true)}>
-  <View style={styles.input}>
-    <Text>{earliestStartTime.toLocaleString()}</Text>
-  </View>
-</TouchableOpacity>
-<DateTimePickerModal
-  isVisible={isEarliestStartPickerVisible}
-  mode="datetime"
-  date={earliestStartTime}
-  onConfirm={(date) => {
-    setEarliestStartPickerVisibility(false);
-    setEarliestStartTime(date);
-  }}
-  onCancel={() => setEarliestStartPickerVisibility(false)}
-/>
+      <TouchableOpacity onPress={() => setEarliestStartPickerVisibility(true)}>
+        <View style={styles.input}>
+          <Text>{earliestStartTime.toLocaleString()}</Text>
+        </View>
+      </TouchableOpacity>
+      <DateTimePickerModal
+        isVisible={isEarliestStartPickerVisible}
+        mode="datetime"
+        date={earliestStartTime}
+        onConfirm={(date) => {
+          setEarliestStartPickerVisibility(false);
+          setEarliestStartTime(date);
+        }}
+        onCancel={() => setEarliestStartPickerVisibility(false)}
+      />
       {/* Latest End Time */}
       <Text style={styles.label}>Latest End Time</Text>
-<TouchableOpacity onPress={() => setLatestEndPickerVisibility(true)}>
-  <View style={styles.input}>
-    <Text>{latestEndTime.toLocaleString()}</Text>
-  </View>
-</TouchableOpacity>
-<DateTimePickerModal
-  isVisible={isLatestEndPickerVisible}
-  mode="datetime"
-  date={latestEndTime}
-  onConfirm={(date) => {
-    setLatestEndPickerVisibility(false);
-    setLatestEndTime(date);
-  }}
-  onCancel={() => setLatestEndPickerVisibility(false)}
-/>
+      <TouchableOpacity onPress={() => setLatestEndPickerVisibility(true)}>
+        <View style={styles.input}>
+          <Text>{latestEndTime.toLocaleString()}</Text>
+        </View>
+      </TouchableOpacity>
+      <DateTimePickerModal
+        isVisible={isLatestEndPickerVisible}
+        mode="datetime"
+        date={latestEndTime}
+        onConfirm={(date) => {
+          setLatestEndPickerVisibility(false);
+          setLatestEndTime(date);
+        }}
+        onCancel={() => setLatestEndPickerVisibility(false)}
+      />
       {/* Service Time */}
       <Text style={styles.label}>Service Time at Stop (minutes)</Text>
       <TextInput

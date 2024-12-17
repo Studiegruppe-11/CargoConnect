@@ -1,4 +1,4 @@
-// /components/RouteListScreen.js
+// /components/RouteList.js
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';

@@ -1,4 +1,4 @@
-// components/RegisterScreen.js
+// components/Register.js
 
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';

@@ -1,4 +1,4 @@
-// components/MapScreen.js
+// components/Map.js
 
 import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Alert } from 'react-native';

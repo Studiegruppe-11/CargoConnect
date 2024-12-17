@@ -1,4 +1,4 @@
-// components/ProfileScreen.js
+// components/Profile.js
 
 import React, { useState, useEffect } from "react";
 import {
@@ -13,15 +13,28 @@ import {
   TouchableOpacity,
 } from "react-native";
 import Slider from "@react-native-community/slider";
-import { Picker } from "@react-native-picker/picker";
-import * as Location from 'expo-location';
 import { ref, onValue, update, set } from "firebase/database";
 import { auth, database } from "../firebaseConfig";
 import { signOut } from "firebase/auth";
 import MapView, { Marker } from 'react-native-maps';
 import { onAuthStateChanged } from "firebase/auth";
+import { debounce } from 'lodash';
 
 const ProfileScreen = ({ navigation }) => {
+  // Create debounced save function
+  const debouncedSave = debounce(async (preferences) => {
+    if (!user) return;
+    
+    const userRef = ref(database, `users/${user.uid}`);
+    try {
+      await update(userRef, preferences);
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to save changes');
+    }
+  }, 1000); // Will save after 1 second of no changes
+
   // Remove duplicate/unnecessary state variables
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,6 +46,7 @@ const ProfileScreen = ({ navigation }) => {
   const [vehicleId, setVehicleId] = useState(`veh-${auth.currentUser?.uid || 'new'}`);
   const [maxCargoWeight, setMaxCargoWeight] = useState('');
   const [maxCargoVolume, setMaxCargoVolume] = useState('');
+  const [licensePlate, setLicensePlate] = useState('');
 
   // Dimensions
   const [length, setLength] = useState('');
@@ -67,6 +81,9 @@ const ProfileScreen = ({ navigation }) => {
   const [preferredCountries, setPreferredCountries] = useState('');
   const [availability, setAvailability] = useState('');
 
+  // Add unsaved changes state
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
   // Add auth state listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -80,6 +97,40 @@ const ProfileScreen = ({ navigation }) => {
 
     return () => unsubscribe();
   }, [navigation]);
+
+  // Add before remove listener
+  useEffect(() => {
+    const handleBeforeRemove = (e) => {
+      if (!hasUnsavedChanges) return;
+      
+      e.preventDefault();
+      Alert.alert(
+        'Unsaved Changes',
+        'Do you want to save your changes before leaving?',
+        [
+          {
+            text: 'Save',
+            onPress: async () => {
+              await savePreferences();
+              navigation.dispatch(e.data.action);
+            },
+          },
+          {
+            text: 'Leave without saving',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
+    };
+
+    navigation.addListener('beforeRemove', handleBeforeRemove);
+    return () => navigation.removeListener('beforeRemove', handleBeforeRemove);
+  }, [hasUnsavedChanges, navigation]);
 
   // Load user preferences
   const loadUserPreferences = async (uid) => {
@@ -108,6 +159,7 @@ const ProfileScreen = ({ navigation }) => {
         setLength(data.dimensions?.length?.toString() || '');
         setWidth(data.dimensions?.width?.toString() || '');
         setHeight(data.dimensions?.height?.toString() || '');
+        setLicensePlate(data.licensePlate || '');
       }
       setLoading(false);
     }, {
@@ -125,47 +177,25 @@ const ProfileScreen = ({ navigation }) => {
     const userRef = ref(database, `users/${user.uid}`);
     const preferences = {
       vehicleId,
-      
-      // Add role before other preferences
-      role, // This will be either 'trucker' or 'company'
-
-      // Cargo constraints
-      maxCargoWeight: Number(maxCargoWeight) || 5000,
-      maxCargoVolume: Number(maxCargoVolume) || 60,
+      role,
+      licensePlate,
+      maxCargoWeight: Number(maxCargoWeight) || 8000,
       dimensions: {
         length: parseFloat(length) || 0,
         width: parseFloat(width) || 0,
         height: parseFloat(height) || 0
       },
-
-      // Location
       startLatitude: parseFloat(startLatitude) || 0,
       startLongitude: parseFloat(startLongitude) || 0,
-
-      // Time constraints
-      workStartTime: parseFloat(workStartTime) || 8,
-      workEndTime: parseFloat(workEndTime) || 20,
-      maxDrivingTime: Number(maxDrivingTime) || 12,
-      breakStartMin: parseFloat(breakStartMin) || 12,
-      breakStartMax: parseFloat(breakStartMax) || 13,
-      breakDuration: Number(breakDuration) || 0.5,
-
-      // Efficiency
-      fuelEfficiency: Number(fuelEfficiency) || 10,
-      fuelCost: Number(fuelCost) || 0,
-      averageSpeed: Number(averageSpeed) || 60,
-
-      preferredCountries: preferredCountries
-        ? preferredCountries.split(',').map(country => country.trim())
-        : [],
     };
 
     try {
       await update(userRef, preferences);
+      setHasUnsavedChanges(false);
       Alert.alert('Success', 'Preferences saved successfully!');
     } catch (error) {
-      Alert.alert('Error', 'Failed to save preferences');
       console.error(error);
+      Alert.alert('Error', 'Failed to save preferences');
     }
   };
 
@@ -178,6 +208,11 @@ const ProfileScreen = ({ navigation }) => {
         console.error("Logout error:", error);
         Alert.alert("Error", "Failed to log out.");
       });
+  };
+
+  const handleRoleChange = (newRole) => {
+    setRole(newRole);
+    setHasUnsavedChanges(true);
   };
 
   if (loading) {
@@ -194,52 +229,79 @@ const ProfileScreen = ({ navigation }) => {
 
       {/* Add Role Selection at the top */}
       <Text style={styles.sectionTitle}>User Role</Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={role}
-          onValueChange={(itemValue) => setRole(itemValue)}
-          style={styles.picker}
-          itemStyle={styles.pickerItem}
+      <View style={styles.roleButtonContainer}>
+        <TouchableOpacity 
+          style={[
+            styles.roleButton, 
+            role === 'trucker' && styles.roleButtonActive
+          ]}
+          onPress={() => handleRoleChange('trucker')}
         >
-          <Picker.Item 
-            label="Trucker" 
-            value="trucker"
-            color="#333" // Added explicit color 
-          />
-          <Picker.Item 
-            label="Company" 
-            value="company" 
-            color="#333" // Added explicit color
-          />
-        </Picker>
+          <Text style={[
+            styles.roleButtonText,
+            role === 'trucker' && styles.roleButtonTextActive
+          ]}>Trucker</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[
+            styles.roleButton, 
+            role === 'company' && styles.roleButtonActive
+          ]}
+          onPress={() => handleRoleChange('company')}
+        >
+          <Text style={[
+            styles.roleButtonText,
+            role === 'company' && styles.roleButtonTextActive
+          ]}>Company</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Only show truck settings if role is trucker */}
+      {/* Add License Plate field */}
       {role === 'trucker' && (
         <>
-          <Text style={styles.sectionTitle}>Truck Settings</Text>
+          <Text style={styles.sectionTitle}>Vehicle Information</Text>
+          <Text style={styles.label}>License Plate</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter license plate"
+            placeholderTextColor="#666"
+            value={licensePlate}
+            onChangeText={(text) => {
+              setLicensePlate(text);
+              setHasUnsavedChanges(true);
+            }}
+          />
 
-          {/* Dimensions Section */}
+          {/* Dimensions Section directly after license plate */}
           <Text style={styles.sectionTitle}>Cargo Dimensions</Text>
           <Text style={styles.inputLabel}>Length (cm):</Text>
           <TextInput
             style={styles.input}
             value={length}
-            onChangeText={setLength}
+            onChangeText={(text) => {
+              setLength(text);
+              setHasUnsavedChanges(true);
+            }}
             keyboardType="numeric"
           />
           <Text style={styles.inputLabel}>Width (cm):</Text>
           <TextInput
             style={styles.input}
             value={width}
-            onChangeText={setWidth}
+            onChangeText={(text) => {
+              setWidth(text);
+              setHasUnsavedChanges(true);
+            }}
             keyboardType="numeric"
           />
           <Text style={styles.inputLabel}>Height (cm):</Text>
           <TextInput
             style={styles.input}
             value={height}
-            onChangeText={setHeight}
+            onChangeText={(text) => {
+              setHeight(text);
+              setHasUnsavedChanges(true);
+            }}
             keyboardType="numeric"
           />
 
@@ -251,7 +313,10 @@ const ProfileScreen = ({ navigation }) => {
             placeholder="Enter max cargo weight"
             placeholderTextColor="#666"
             value={maxCargoWeight}
-            onChangeText={setMaxCargoWeight}
+            onChangeText={(text) => {
+              setMaxCargoWeight(text);
+              setHasUnsavedChanges(true);
+            }}
             keyboardType="decimal-pad"
           />
           <Text style={styles.label}>Max Cargo Volume (m³)</Text>
@@ -260,7 +325,10 @@ const ProfileScreen = ({ navigation }) => {
             placeholder="Enter max cargo volume"
             placeholderTextColor="#666"
             value={maxCargoVolume}
-            onChangeText={setMaxCargoVolume}
+            onChangeText={(text) => {
+              setMaxCargoVolume(text);
+              setHasUnsavedChanges(true);
+            }}
             keyboardType="decimal-pad"
           />
 
@@ -280,6 +348,7 @@ const ProfileScreen = ({ navigation }) => {
                 setStartLatitude(latitude.toString());
                 setStartLongitude(longitude.toString());
                 setMapMarker({ latitude, longitude });
+                setHasUnsavedChanges(true);
               }}
               initialRegion={{
                 latitude: parseFloat(startLatitude) || 55.6816,
@@ -300,7 +369,10 @@ const ProfileScreen = ({ navigation }) => {
               placeholder="Enter starting latitude"
               placeholderTextColor="#666"
               value={startLatitude}
-              onChangeText={setStartLatitude}
+              onChangeText={(text) => {
+                setStartLatitude(text);
+                setHasUnsavedChanges(true);
+              }}
               keyboardType="decimal-pad"
             />
 
@@ -310,7 +382,10 @@ const ProfileScreen = ({ navigation }) => {
               placeholder="Enter starting longitude"
               placeholderTextColor="#666"
               value={startLongitude}
-              onChangeText={setStartLongitude}
+              onChangeText={(text) => {
+                setStartLongitude(text);
+                setHasUnsavedChanges(true);
+              }}
               keyboardType="decimal-pad"
             />
           </View>
@@ -321,7 +396,10 @@ const ProfileScreen = ({ navigation }) => {
           <TextInput
             style={styles.input}
             value={workStartTime}
-            onChangeText={setWorkStartTime}
+            onChangeText={(text) => {
+              setWorkStartTime(text);
+              setHasUnsavedChanges(true);
+            }}
             keyboardType="decimal-pad"
             placeholder="e.g., 8 for 8:00 AM"
             placeholderTextColor="#666"
@@ -330,7 +408,10 @@ const ProfileScreen = ({ navigation }) => {
           <TextInput
             style={styles.input}
             value={workEndTime}
-            onChangeText={setWorkEndTime}
+            onChangeText={(text) => {
+              setWorkEndTime(text);
+              setHasUnsavedChanges(true);
+            }}
             keyboardType="decimal-pad"
             placeholder="e.g., 20 for 8:00 PM"
             placeholderTextColor="#666"
@@ -341,7 +422,10 @@ const ProfileScreen = ({ navigation }) => {
             maximumValue={12}
             step={1}
             value={parseFloat(maxDrivingTime)}
-            onValueChange={setMaxDrivingTime}
+            onValueChange={(value) => {
+              setMaxDrivingTime(value.toString());
+              setHasUnsavedChanges(true);
+            }}
             style={styles.slider}
           />
 
@@ -353,7 +437,10 @@ const ProfileScreen = ({ navigation }) => {
               placeholder="Start hour"
               placeholderTextColor="#666"
               value={breakStartMin}
-              onChangeText={setBreakStartMin}
+              onChangeText={(text) => {
+                setBreakStartMin(text);
+                setHasUnsavedChanges(true);
+              }}
               keyboardType="decimal-pad"
             />
             <TextInput
@@ -361,7 +448,10 @@ const ProfileScreen = ({ navigation }) => {
               placeholder="End hour"
               placeholderTextColor="#666"
               value={breakStartMax}
-              onChangeText={setBreakStartMax}
+              onChangeText={(text) => {
+                setBreakStartMax(text);
+                setHasUnsavedChanges(true);
+              }}
               keyboardType="decimal-pad"
             />
           </View>
@@ -369,7 +459,10 @@ const ProfileScreen = ({ navigation }) => {
           <TextInput
             style={styles.input}
             value={breakDuration}
-            onChangeText={setBreakDuration}
+            onChangeText={(text) => {
+              setBreakDuration(text);
+              setHasUnsavedChanges(true);
+            }}
             keyboardType="decimal-pad"
             placeholderTextColor="#666"
           />
@@ -382,7 +475,10 @@ const ProfileScreen = ({ navigation }) => {
             placeholder="Enter fuel efficiency"
             placeholderTextColor="#666"
             value={fuelEfficiency}
-            onChangeText={setFuelEfficiency}
+            onChangeText={(text) => {
+              setFuelEfficiency(text);
+              setHasUnsavedChanges(true);
+            }}
             keyboardType="decimal-pad"
           />
           <Text style={styles.label}>Average Speed (km/h): {averageSpeed}</Text>
@@ -391,16 +487,27 @@ const ProfileScreen = ({ navigation }) => {
             maximumValue={90}
             step={5}
             value={averageSpeed}
-            onValueChange={setAverageSpeed}
+            onValueChange={(value) => {
+              setAverageSpeed(value);
+              setHasUnsavedChanges(true);
+            }}
             style={styles.slider}
           />
         </>
       )}
 
-      {/* Buttons */}
-      <Button title="Update Preferences" onPress={savePreferences} />
-      <View style={styles.logoutButtonContainer}>
-        <Button title="Logout" onPress={handleLogout} color="#FF3B30" />
+      {/* Add a save button near the logout button */}
+      <View style={styles.buttonContainer}>
+        {hasUnsavedChanges && (
+          <Button 
+            title="Save Changes" 
+            onPress={savePreferences}
+            color="#007AFF" 
+          />
+        )}
+        <View style={styles.logoutButtonContainer}>
+          <Button title="Logout" onPress={handleLogout} color="#FF3B30" />
+        </View>
       </View>
     </ScrollView>
   );
@@ -460,10 +567,12 @@ const styles = StyleSheet.create({
     height: 50,
     color: "#333", // Changed from #000 for consistency
   },
+  buttonContainer: {
+    marginTop: 20,
+    marginBottom: 20,
+  },
   logoutButtonContainer: {
-    marginTop: 30,
-    alignSelf: "center",
-    width: "60%",
+    marginTop: 10,
   },
   sectionTitle: {
     fontSize: 18,
@@ -485,6 +594,31 @@ const styles = StyleSheet.create({
   },
   halfInput: {
     width: "48%",
+  },
+  roleButtonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  roleButton: {
+    flex: 0.48, // Changed from 1 to create spacing
+    padding: 15,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 5,
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  roleButtonActive: {
+    backgroundColor: "#1EB1FC",
+  },
+  roleButtonText: {
+    color: "#333",
+    fontWeight: "500",
+  },
+  roleButtonTextActive: {
+    color: "#fff",
   },
 });
 

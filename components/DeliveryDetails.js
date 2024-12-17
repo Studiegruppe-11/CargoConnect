@@ -1,4 +1,4 @@
-// components/DeliveryDetailsScreen.js
+// components/DeliveryDetails.js
 
 import React from "react";
 import {
