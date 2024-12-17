@@ -221,32 +221,26 @@ const ProfileScreen = ({ navigation }) => {
 
           {/* Dimensions Section */}
           <Text style={styles.sectionTitle}>Cargo Dimensions</Text>
-          <Text style={styles.label}>Length (meters)</Text>
+          <Text style={styles.inputLabel}>Length (cm):</Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter length"
-            placeholderTextColor="#666"
             value={length}
             onChangeText={setLength}
-            keyboardType="decimal-pad"
+            keyboardType="numeric"
           />
-          <Text style={styles.label}>Width (meters)</Text>
+          <Text style={styles.inputLabel}>Width (cm):</Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter width"
-            placeholderTextColor="#666"
             value={width}
             onChangeText={setWidth}
-            keyboardType="decimal-pad"
+            keyboardType="numeric"
           />
-          <Text style={styles.label}>Height (meters)</Text>
+          <Text style={styles.inputLabel}>Height (cm):</Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter height"
-            placeholderTextColor="#666"
             value={height}
             onChangeText={setHeight}
-            keyboardType="decimal-pad"
+            keyboardType="numeric"
           />
 
           {/* Cargo Capacity */}

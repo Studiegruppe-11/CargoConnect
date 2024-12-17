@@ -1,14 +1,13 @@
 // /components/RoutesScreen.js
 
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Alert } from 'react-native';
-import MapView, { Polyline, Marker } from 'react-native-maps';
-import Icon from 'react-native-vector-icons/Ionicons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Location from 'expo-location'; 
-import { getDatabase, ref, onValue } from 'firebase/database';
-import { auth } from '../firebaseConfig';
-
+import React, { useState, useEffect } from "react";
+import { View, StyleSheet, TouchableOpacity, Text, Alert } from "react-native";
+import MapView, { Polyline, Marker } from "react-native-maps";
+import Icon from "react-native-vector-icons/Ionicons";
+import { SafeAreaView } from "react-native-safe-area-context";
+import * as Location from "expo-location";
+import { getDatabase, ref, onValue } from "firebase/database";
+import { auth } from "../firebaseConfig";
 
 const RoutesScreen = ({ navigation, route }) => {
   const [optimizedRoutes, setOptimizedRoutes] = useState([]);
@@ -36,11 +35,11 @@ const RoutesScreen = ({ navigation, route }) => {
   }, [route.params?.selectedRoute]);
 
   const handleOptimizePress = () => {
-    navigation.navigate('OptimizeRoutes');
+    navigation.navigate("OptimizeRoutes");
   };
 
   const handleViewRoutes = () => {
-    navigation.navigate('SelectRoute', { optimizedRoutes });
+    navigation.navigate("SelectRoute", { optimizedRoutes });
   };
 
   return (
@@ -64,20 +63,21 @@ const RoutesScreen = ({ navigation, route }) => {
             ))}
           </>
         ) : (
-          optimizedRoutes.map((route, routeIndex) => (
+          optimizedRoutes.map((r, routeIndex) => (
             <Polyline
-              key={route.vehicleId}
-              coordinates={route.stops.map(stop => stop.coordinates)}
+              key={r.vehicleId}
+              coordinates={r.stops.map(stop => stop.coordinates)}
               strokeColor={`#${Math.floor(Math.random()*16777215).toString(16)}`}
               strokeWidth={2}
             />
           ))
         )}
       </MapView>
-
+  
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={handleOptimizePress}>
-          <Text style={styles.buttonText}>Optimize Routes</Text>
+        {/* Rename this button from "Optimize Routes" to "Menu" */}
+        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('OptimizeRoutes')}>
+          <Text style={styles.buttonText}>Menu</Text>
         </TouchableOpacity>
         
         {optimizedRoutes.length > 0 && (
@@ -98,26 +98,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   buttonContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 20,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     padding: 10,
   },
   button: {
-    backgroundColor: '#2F67B2',
+    backgroundColor: "#2F67B2",
     padding: 15,
     borderRadius: 8,
     minWidth: 150,
-    alignItems: 'center',
+    alignItems: "center",
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
-  }
+    fontWeight: "bold",
+  },
 });
 
 export default RoutesScreen;
