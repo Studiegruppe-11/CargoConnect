@@ -323,20 +323,19 @@ const prepareCuOptPayload = async (deliveries, constraints) => {
           <Text style={styles.statusText}>
             Ready to optimize routes. Press the button below to start.
           </Text>
-          <Button 
-            title="Generate Optimized Routes" 
-            onPress={handleOptimizePress}
-            disabled={loading} 
-          />
-          <Button 
-            title="View Generated Routes" 
-            onPress={() => navigation.navigate('RouteList')} 
-          />
-          {/* Remove the "View Details of a Specific Route" button */}
-          {/*<Button 
-            title="View Details of a Specific Route" 
-            onPress={() => navigation.navigate('RouteDetails', { route })}
-          />*/}
+          <View style={styles.buttonContainer}>
+            <Button 
+              title="Generate Optimized Routes" 
+              onPress={handleOptimizePress}
+              disabled={loading} 
+            />
+            <View style={styles.buttonSpacing}>
+              <Button 
+                title="View Generated Routes" 
+                onPress={() => navigation.navigate('RouteList')} 
+              />
+            </View>
+          </View>
         </View>
       )}
     </View>
@@ -357,7 +356,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     marginVertical: 20,
+    backgroundColor: 'transparent', // Fixes background color issue
     color: "#333",
+    padding: 10,
   },
   title: {
     fontSize: 24,
@@ -376,6 +377,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
+  },
+  buttonContainer: {
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  buttonSpacing: {
+    marginTop: 15, // Adds space between buttons
   },
 });
 

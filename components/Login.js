@@ -34,16 +34,45 @@ const LoginScreen = ({ navigation }) => {
         onChangeText={setPassword}
         secureTextEntry
       />
-      <Button title="Login" onPress={handleLogin} />
-      <Button title="Register" onPress={() => navigation.navigate('Register')} />
+      <View style={styles.buttonContainer}>
+        <Button title="Login" onPress={handleLogin} />
+        <View style={styles.registerButton}>
+          <Button title="Register" onPress={() => navigation.navigate('Register')} />
+        </View>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 20 },
-  title: { fontSize: 24, marginBottom: 20, textAlign: 'center' },
-  input: { height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 20, paddingHorizontal: 10, borderRadius: 5},
+  container: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    padding: 20 
+  },
+  title: { 
+    fontSize: 24, 
+    marginBottom: 20, 
+    textAlign: 'center' 
+  },
+  input: { 
+    height: 40, 
+    borderColor: 'gray', 
+    borderWidth: 1, 
+    marginBottom: 20, 
+    paddingHorizontal: 10, 
+    borderRadius: 8
+  },
+  // Add a container for buttons
+  buttonContainer: {
+    marginTop: 10,
+    borderRadius: 8
+  },
+  // Add spacing between buttons 
+  registerButton: {
+    marginTop: 15,
+    borderRadius: 25
+  }
 });
 
 export default LoginScreen;

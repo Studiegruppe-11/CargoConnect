@@ -11,6 +11,8 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  PermissionsAndroid,
+  Platform,
 } from "react-native";
 import Slider from "@react-native-community/slider";
 import { ref, onValue, update, set } from "firebase/database";
@@ -19,8 +21,14 @@ import { signOut } from "firebase/auth";
 import MapView, { Marker } from 'react-native-maps';
 import { onAuthStateChanged } from "firebase/auth";
 import { debounce } from 'lodash';
+import * as ImagePicker from 'expo-image-picker';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+
 
 const ProfileScreen = ({ navigation }) => {
+  const [licenseScanned, setLicenseScanned] = useState(false);
+  const [licenseVerified, setLicenseVerified] = useState(false);
+
   // Create debounced save function
   const debouncedSave = debounce(async (preferences) => {
     if (!user) return;
@@ -160,6 +168,8 @@ const ProfileScreen = ({ navigation }) => {
         setWidth(data.dimensions?.width?.toString() || '');
         setHeight(data.dimensions?.height?.toString() || '');
         setLicensePlate(data.licensePlate || '');
+        setLicenseVerified(data.licenseVerified || false);
+        setLicenseScanned(data.licenseVerified || false); // Update UI state based on database
       }
       setLoading(false);
     }, {
@@ -215,6 +225,29 @@ const ProfileScreen = ({ navigation }) => {
     setHasUnsavedChanges(true);
   };
 
+  const handleScanLicense = async () => {
+    const result = await ImagePicker.launchCameraAsync({
+      mediaType: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.8,
+    });
+  
+    if (!result.cancelled) {
+      // Update local state to reflect that the license has been scanned and verified
+      setLicenseScanned(true);
+      setLicenseVerified(true);
+  
+      // Save the verification status to the database
+      const userRef = ref(database, `users/${user.uid}`);
+      try {
+        await update(userRef, { licenseVerified: true });
+      } catch (error) {
+        console.error('Error updating license status:', error);
+        Alert.alert('Error', 'Failed to update license status');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -225,10 +258,9 @@ const ProfileScreen = ({ navigation }) => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>User Settings</Text>
+      <Text style={styles.title}>Settings</Text>
 
       {/* Add Role Selection at the top */}
-      <Text style={styles.sectionTitle}>User Role</Text>
       <View style={styles.roleButtonContainer}>
         <TouchableOpacity 
           style={[
@@ -259,6 +291,22 @@ const ProfileScreen = ({ navigation }) => {
       {/* Add License Plate field */}
       {role === 'trucker' && (
         <>
+          <View style={styles.scannerContainer}>
+            {licenseVerified ? (
+              <View style={styles.successContainer}>
+                <Ionicons name="checkmark-circle" size={40} color="#4CAF50" />
+                <Text style={styles.successText}>License Verified</Text>
+              </View>
+            ) : (
+              <TouchableOpacity 
+                style={styles.scanButton} 
+                onPress={handleScanLicense}
+              >
+                <Ionicons name="camera" size={24} color="#fff" />
+                <Text style={styles.scanButtonText}>Scan License</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           <Text style={styles.sectionTitle}>Vehicle Information</Text>
           <Text style={styles.label}>License Plate</Text>
           <TextInput
@@ -561,11 +609,11 @@ const styles = StyleSheet.create({
   picker: {
     height: 50,
     width: "100%",
-    color: "#333", // Changed from #000 to make text more visible
+    color: "#333", 
   },
   pickerItem: {
     height: 50,
-    color: "#333", // Changed from #000 for consistency
+    color: "#333",
   },
   buttonContainer: {
     marginTop: 20,
@@ -599,6 +647,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 20,
+    marginTop: 10,
     paddingHorizontal: 10,
   },
   roleButton: {
@@ -619,6 +668,30 @@ const styles = StyleSheet.create({
   },
   roleButtonTextActive: {
     color: "#fff",
+  },
+  scannerContainer: {
+    alignItems: 'center',
+    marginVertical: 15,
+  },
+  scanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1EB1FC',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  scanButtonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  successContainer: {
+    alignItems: 'center',
+  },
+  successText: {
+    color: '#4CAF50',
+    marginTop: 4,
+    fontSize: 14,
   },
 });
 

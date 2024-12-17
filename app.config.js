@@ -50,6 +50,15 @@ export default {
     experiments: {
       tsconfigPaths: true,
       newArchEnabled: true
-    }
+    },
+    plugins: [
+      [
+        'expo-image-picker',
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan your driver's license."
+        }
+      ],
+      "expo-router"
+    ]
   }
 };
