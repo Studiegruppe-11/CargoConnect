@@ -10,7 +10,7 @@ import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { getDatabase, ref, onValue } from 'firebase/database';
 
 // Import Screens
-import ClientInputScreen from '../components/createDelivery';
+import ClientInputScreen from '../components/CreateDelivery';
 import MapScreen from '../components/Map';
 import DeliveryDetailsScreen from '../components/DeliveryDetails';
 // import RoutesScreen from '../components/RoutesScreen';

@@ -13,7 +13,7 @@ export const fetchDeliveries = () => {
         deliveriesRef,
         (snapshot) => {
           const data = snapshot.val();
-          console.log("Fetched deliveries data from Firebase:", data);
+          console.log("Fetched deliveries data from Firebase");
           const deliveries = [];
           if (data) {
             Object.keys(data).forEach((key) => {
@@ -21,7 +21,7 @@ export const fetchDeliveries = () => {
               deliveries.push({ id: key, ...delivery });
             });
           }
-          console.log("Parsed deliveries:", deliveries);
+          console.log("Parsed deliveries");
           resolve(deliveries);
         },
         (error) => {
@@ -46,7 +46,7 @@ export const fetchUserConstraints = () => {
       userRef,
       (snapshot) => {
         const data = snapshot.val();
-        console.log("Fetched user constraints from Firebase:", data);
+        console.log("Fetched user constraints from Firebase");
         if (data) {
           if (
             data.preferredCountries &&

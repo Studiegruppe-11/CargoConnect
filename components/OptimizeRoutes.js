@@ -55,14 +55,14 @@ const OptimizeRoutesScreen = ({ navigation }) => {
           return;
         }
         const constraints = await fetchUserConstraints(navigation);
-        console.log("Fetched constraints on auth change:", constraints);
+        console.log("Fetched constraints on auth change");
         if (!constraints) {
           throw new Error("No vehicle constraints found");
         }
   
         // At this point you have constraints. You may also want to fetch deliveries here.
         const deliveries = await fetchDeliveries();
-        console.log("Fetched deliveries:", deliveries);
+        console.log("Fetched deliveries");
   
         // Now data is ready, show buttons:
         setLoading(false);
@@ -253,10 +253,10 @@ const prepareCuOptPayload = async (deliveries, constraints) => {
       console.log("Starting optimization process...");
   
       const constraints = await fetchUserConstraints(navigation);
-      console.log("Fetched constraints:", constraints);
+      console.log("Fetched constraints");
   
       const deliveries = await fetchDeliveries();
-      console.log("Fetched deliveries:", deliveries);
+      console.log("Fetched deliveries");
   
       const { payload, locations } = await prepareCuOptPayload(deliveries, constraints);
       console.log("Generated payload:", payload);

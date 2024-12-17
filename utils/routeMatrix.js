@@ -50,16 +50,16 @@ const determineNewStops = (oldMatrix, newLocations) => {
 };
 
 export const updateDistanceMatrixIncrementally = async (userId, locations) => {
+  console.log('Updating distance matrix incrementally...');
   const oldMatrix = await getCachedMatrix(userId);
   const { oldCount, newCount } = determineNewStops(oldMatrix, locations);
 
-  // If oldMatrix is invalid or doesn't match the expected NxN shape, recalc
+  // If oldMatrix is invalid or not square, recalc from scratch
   if (oldMatrix && oldMatrix.distances) {
     const n = oldMatrix.distances.length;
-    // Check all rows are the same length
     for (let row of oldMatrix.distances) {
       if (row.length !== n) {
-        console.warn("Cached matrix not square. Recalculating from scratch.");
+        console.warn("Cached matrix not square or corrupted. Recalculating from scratch.");
         const { distances, durations } = await getDistanceMatrixFull(locations, locations);
         await saveCachedMatrix(userId, { locations, distances, durations });
         return { distances, durations };
@@ -67,21 +67,30 @@ export const updateDistanceMatrixIncrementally = async (userId, locations) => {
     }
   }
 
-  if (!oldMatrix || oldCount === 0) {
-    // Full recalculation
+  // If oldMatrix exists but prefix doesn't match, recalc
+  if (oldMatrix && oldMatrix.locations && oldCount !== oldMatrix.locations.length) {
+    console.warn("Old matrix prefix no longer valid. Recalculating from scratch.");
     const { distances, durations } = await getDistanceMatrixFull(locations, locations);
     await saveCachedMatrix(userId, { locations, distances, durations });
     return { distances, durations };
   }
 
+  // If no oldMatrix or oldCount=0, full recalculation
+  if (!oldMatrix || oldCount === 0) {
+    const { distances, durations } = await getDistanceMatrixFull(locations, locations);
+    await saveCachedMatrix(userId, { locations, distances, durations });
+    return { distances, durations };
+  }
+
+  // If no new stops, return old
   if (newCount === 0) {
-    // No new stops, just return the old one
     return {
       distances: oldMatrix.distances,
       durations: oldMatrix.durations
     };
   }
 
+  // Incremental update
   const totalCount = oldCount + newCount;
   const oldDistances = oldMatrix.distances;
   const oldDurations = oldMatrix.durations;
@@ -103,7 +112,7 @@ export const updateDistanceMatrixIncrementally = async (userId, locations) => {
     return extended;
   });
 
-  // Add new rows for new stops
+  // Add new rows
   for (let i = 0; i < newCount; i++) {
     const newDistRow = Array(totalCount).fill(0);
     const newDurRow = Array(totalCount).fill(0);
@@ -111,27 +120,44 @@ export const updateDistanceMatrixIncrementally = async (userId, locations) => {
     newDurations.push(newDurRow);
   }
 
-  // Verify matrix shape now
+  // Check shape now
   if (newDistances.length !== totalCount || newDurations.length !== totalCount) {
-    throw new Error("Matrix rows count does not match totalCount after expansion.");
+    console.warn("Matrix shape invalid after expansion, recalculating from scratch.");
+    const { distances, durations } = await getDistanceMatrixFull(locations, locations);
+    await saveCachedMatrix(userId, { locations, distances, durations });
+    return { distances, durations };
   }
   for (let row of newDistances) {
     if (row.length !== totalCount) {
-      throw new Error("Mismatch in distances row length after adding new stops.");
+      console.warn("Distance row length mismatch after adding new stops, recalculating from scratch.");
+      const { distances, durations } = await getDistanceMatrixFull(locations, locations);
+      await saveCachedMatrix(userId, { locations, distances, durations });
+      return { distances, durations };
     }
   }
   for (let row of newDurations) {
     if (row.length !== totalCount) {
-      throw new Error("Mismatch in durations row length after adding new stops.");
+      console.warn("Duration row length mismatch after adding new stops, recalculating from scratch.");
+      const { distances, durations } = await getDistanceMatrixFull(locations, locations);
+      await saveCachedMatrix(userId, { locations, distances, durations });
+      return { distances, durations };
     }
   }
 
+  // Partial computations: these may be rectangular
   const oldSubset = locations.slice(0, oldCount);
   const newSubset = locations.slice(oldCount);
 
-  // 1) Old -> New
+  // 1) Old -> New (oldCount x newCount)
   {
     const partial = await getDistanceMatrixFull(oldSubset, newSubset);
+    if (partial.distances.length !== oldCount || partial.distances.some(r => r.length !== newCount)) {
+      console.warn("Partial old->new failed shape check. Recalculating full.");
+      const { distances, durations } = await getDistanceMatrixFull(locations, locations);
+      await saveCachedMatrix(userId, { locations, distances, durations });
+      return { distances, durations };
+    }
+
     for (let r = 0; r < oldCount; r++) {
       for (let c = 0; c < newCount; c++) {
         newDistances[r][oldCount + c] = partial.distances[r][c];
@@ -140,9 +166,16 @@ export const updateDistanceMatrixIncrementally = async (userId, locations) => {
     }
   }
 
-  // 2) New -> Old
+  // 2) New -> Old (newCount x oldCount)
   {
     const partial = await getDistanceMatrixFull(newSubset, oldSubset);
+    if (partial.distances.length !== newCount || partial.distances.some(r => r.length !== oldCount)) {
+      console.warn("Partial new->old failed shape check. Recalculating full.");
+      const { distances, durations } = await getDistanceMatrixFull(locations, locations);
+      await saveCachedMatrix(userId, { locations, distances, durations });
+      return { distances, durations };
+    }
+
     for (let r = 0; r < newCount; r++) {
       for (let c = 0; c < oldCount; c++) {
         newDistances[oldCount + r][c] = partial.distances[r][c];
@@ -151,9 +184,16 @@ export const updateDistanceMatrixIncrementally = async (userId, locations) => {
     }
   }
 
-  // 3) New -> New
+  // 3) New -> New (newCount x newCount)
   {
     const partial = await getDistanceMatrixFull(newSubset, newSubset);
+    if (partial.distances.length !== newCount || partial.distances.some(r => r.length !== newCount)) {
+      console.warn("Partial new->new failed shape check. Recalculating full.");
+      const { distances, durations } = await getDistanceMatrixFull(locations, locations);
+      await saveCachedMatrix(userId, { locations, distances, durations });
+      return { distances, durations };
+    }
+
     for (let r = 0; r < newCount; r++) {
       for (let c = 0; c < newCount; c++) {
         newDistances[oldCount + r][oldCount + c] = partial.distances[r][c];
@@ -162,18 +202,28 @@ export const updateDistanceMatrixIncrementally = async (userId, locations) => {
     }
   }
 
-  // Final sanity check
+  // Final check: now we should have a full NxN matrix
   if (newDistances.length !== totalCount || newDurations.length !== totalCount) {
-    throw new Error("Final matrix not square after incremental update.");
+    console.warn("Final incremental update check failed, recalculating from scratch.");
+    const { distances, durations } = await getDistanceMatrixFull(locations, locations);
+    await saveCachedMatrix(userId, { locations, distances, durations });
+    return { distances, durations };
   }
+
   for (let row of newDistances) {
     if (row.length !== totalCount) {
-      throw new Error("Final distances matrix row length mismatch.");
+      console.warn("Distance row length mismatch after final assembly, recalculating from scratch.");
+      const { distances, durations } = await getDistanceMatrixFull(locations, locations);
+      await saveCachedMatrix(userId, { locations, distances, durations });
+      return { distances, durations };
     }
   }
   for (let row of newDurations) {
     if (row.length !== totalCount) {
-      throw new Error("Final durations matrix row length mismatch.");
+      console.warn("Duration row length mismatch after final assembly, recalculating from scratch.");
+      const { distances, durations } = await getDistanceMatrixFull(locations, locations);
+      await saveCachedMatrix(userId, { locations, distances, durations });
+      return { distances, durations };
     }
   }
 
@@ -190,12 +240,16 @@ export const updateDistanceMatrixIncrementally = async (userId, locations) => {
 };
 
 export const getDistanceMatrixFull = async (origins, destinations) => {
+  console.log('Calculating full distance matrix...');
   try {
+    const rows = origins.length;
+    const cols = destinations.length;
+
     const originBatches = chunk(origins, BATCH_SIZE);
     const destinationBatches = chunk(destinations, BATCH_SIZE);
 
-    const allDistances = Array(origins.length).fill().map(() => Array(destinations.length).fill(0));
-    const allDurations = Array(origins.length).fill().map(() => Array(destinations.length).fill(0));
+    const allDistances = Array.from({ length: rows }, () => Array(cols).fill(0));
+    const allDurations = Array.from({ length: rows }, () => Array(cols).fill(0));
 
     for (let i = 0; i < originBatches.length; i++) {
       for (let j = 0; j < destinationBatches.length; j++) {
@@ -267,18 +321,21 @@ export const getDistanceMatrixFull = async (origins, destinations) => {
       }
     }
 
-    // Check uniformity one last time here
-    const n = origins.length;
+    // Check uniformity for NxM
+    if (allDistances.length !== rows || allDurations.length !== rows) {
+      console.error("Row count mismatch in results. Falling back.");
+      return fallbackCalculation(origins, destinations);
+    }
     for (let row of allDistances) {
-      if (row.length !== n) {
-        console.error("All rows must match length n in distances.");
-        throw new Error("Distance matrix row length mismatch after full query.");
+      if (row.length !== cols) {
+        console.error("Distances row length mismatch. Falling back.");
+        return fallbackCalculation(origins, destinations);
       }
     }
     for (let row of allDurations) {
-      if (row.length !== n) {
-        console.error("All rows must match length n in durations.");
-        throw new Error("Duration matrix row length mismatch after full query.");
+      if (row.length !== cols) {
+        console.error("Durations row length mismatch. Falling back.");
+        return fallbackCalculation(origins, destinations);
       }
     }
 
@@ -294,6 +351,9 @@ export const getDistanceMatrixFull = async (origins, destinations) => {
 };
 
 const fallbackCalculation = (origins, destinations) => {
+  const rows = origins.length;
+  const cols = destinations.length;
+
   const distances = origins.map(origin => 
     destinations.map(dest => {
       const R = 6371;
@@ -309,6 +369,7 @@ const fallbackCalculation = (origins, destinations) => {
   );
 
   const durations = distances.map(row => row.map(distance => Math.ceil(distance)));
+  // No need to check here; fallback always creates the correct shape.
   return {
     distances,
     durations
