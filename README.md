@@ -2,6 +2,10 @@
 
 En mobilapplikation til at lave avanceret profitmaksimering, samt forbinde chauffører med virksomheder, der har brug for transporttjenester.
 
+## Styles
+
+Vi har valgt ikke at implementere en stor global styles fil, da det blev uoverskueligt i takt med udvidelse af projektet. I stedet har vi valgt en komponentbaseret stylingtilgang, hvor hver komponent har styles i samme fil. Til videreudvikling af projektet, kunne en mere modulær opbygning af styles være en fordel ved yderligere skalering.
+
 ## Ruteoptimering
 
 Applikationen laver ruteoptimering baseret på følgende komponenter:
