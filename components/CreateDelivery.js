@@ -124,7 +124,7 @@ const ClientInputScreen = ({ navigation, route }) => {
   const [height, setHeight] = useState("");
   const [width, setWidth] = useState("");
   const [length, setLength] = useState("");
-  // const [payment, setPayment] = useState("");
+  const [payment, setPayment] = useState("");
   const [earliestStartTime, setEarliestStartTime] = useState(new Date());
   const [latestEndTime, setLatestEndTime] = useState(new Date());
   const [serviceTime, setServiceTime] = useState(10); // i minutter
@@ -138,7 +138,7 @@ const ClientInputScreen = ({ navigation, route }) => {
   // Tilføj nye tilstandsvariabler for leveringsbegrænsninger
   const [priority, setPriority] = useState("1");
   const [isMandatory, setIsMandatory] = useState(false);
-  const [prize, setPrize] = useState("0");
+  // const [prize, setPrize] = useState("0");
   const [vehicleTypeRequired, setVehicleTypeRequired] = useState([]);
 
   const db = getDatabase();
@@ -606,7 +606,7 @@ const ClientInputScreen = ({ navigation, route }) => {
           onChangeText={setLength}
           keyboardType="numeric"
         />
-        {/* Betaling
+        {/* Betaling */}
         <Text style={styles.label}>Betaling (€)</Text>
         <TextInput
           style={styles.input}
@@ -614,7 +614,7 @@ const ClientInputScreen = ({ navigation, route }) => {
           value={payment}
           onChangeText={setPayment}
           keyboardType="numeric"
-        /> */}
+        /> 
         {/* Tidligste Starttidspunkt */}
         <Text style={styles.label}>Tidligste Starttidspunkt</Text>
         <TouchableOpacity onPress={() => setEarliestStartPickerVisibility(true)}>
@@ -682,13 +682,13 @@ const ClientInputScreen = ({ navigation, route }) => {
         />
 
         {/* Præmie/Bonus */}
-        <Text style={styles.label}>Præmie/Bonus (€)</Text>
+        {/* <Text style={styles.label}>Præmie/Bonus (€)</Text>
         <TextInput
           style={styles.input}
           value={prize}
           onChangeText={setPrize}
           keyboardType="numeric"
-        />
+        /> */}
     {/* Knap til at oprette levering */}
         <Button title="Opret Levering" onPress={handleCreateDelivery} />
       </ScrollView>
