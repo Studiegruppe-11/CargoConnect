@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  SafeAreaView, // Add this import
 } from 'react-native';
 import { getDatabase, ref, onValue } from 'firebase/database';
 import { auth } from '../firebaseConfig';
@@ -47,58 +48,71 @@ const RouteHistoryScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2F67B2" />
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#2F67B2" />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (routes.length === 0) {
     return (
-      <View style={styles.center}>
-        <Text>No routes found.</Text>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}>
+          <Text>No routes found.</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Route History</Text>
-      <FlatList
-        data={routes}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.routeItem}
-            onPress={() => handleRouteSelect(item)}
-          >
-            <Text style={styles.routeDate}>{item.date}</Text>
-            <Text>
-              Stops:{' '}
-              {item.routes && item.routes[0] && item.routes[0].stops
-                ? item.routes[0].stops.length
-                : 'N/A'}
-            </Text>
-            <Text>
-              Total Cost:{' '}
-              {item.totalCost !== undefined
-                ? Math.round(item.totalCost)
-                : 'N/A'}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.contentContainer}>
+        <Text style={styles.title}>Route History</Text>
+        <FlatList
+          data={routes}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.routeItem}
+              onPress={() => handleRouteSelect(item)}
+            >
+              <Text style={styles.routeDate}>{item.date}</Text>
+              <Text>
+                Stops:{' '}
+                {item.routes && item.routes[0] && item.routes[0].stops
+                  ? item.routes[0].stops.length
+                  : 'N/A'}
+              </Text>
+              <Text>
+                Total Cost:{' '}
+                {item.totalCost !== undefined
+                  ? Math.round(item.totalCost)
+                  : 'N/A'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: '#f5f5f5',
   },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  contentContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  center: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',

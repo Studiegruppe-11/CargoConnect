@@ -1,6 +1,6 @@
 // components/DeliveryHistory.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, SafeAreaView } from 'react-native';
 import { getDatabase, ref, onValue } from 'firebase/database';
 import { auth } from '../firebaseConfig';
 
@@ -42,29 +42,34 @@ const DeliveryHistoryScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Delivery History</Text>
-      <FlatList
-        data={history}
-        renderItem={({ item }) => (
-          <View style={styles.historyItem}>
-            <Text style={styles.historyId}>Delivery #{item.id}</Text>
-            <Text style={styles.historyDetails}>From: {item.pickupAddress}</Text>
-            <Text style={styles.historyDetails}>To: {item.deliveryAddress}</Text>
-            <Text style={styles.historyDate}>Completed: {item.completedAt}</Text>
-          </View>
-        )}
-        keyExtractor={(item) => item.id}
-      />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.contentContainer}>
+        <Text style={styles.title}>Delivery History</Text>
+        <FlatList
+          data={history}
+          renderItem={({ item }) => (
+            <View style={styles.historyItem}>
+              <Text style={styles.historyId}>Delivery #{item.id}</Text>
+              <Text style={styles.historyDetails}>From: {item.pickupAddress}</Text>
+              <Text style={styles.historyDetails}>To: {item.deliveryAddress}</Text>
+              <Text style={styles.historyDate}>Completed: {item.completedAt}</Text>
+            </View>
+          )}
+          keyExtractor={(item) => item.id}
+        />
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: '#f5f5f5',
+  },
+  contentContainer: {
+    flex: 1,
+    padding: 20,
   },
   centerContainer: {
     flex: 1,

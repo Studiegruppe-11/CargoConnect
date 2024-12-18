@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import { getDatabase, ref, onValue, get } from 'firebase/database';
 import { auth } from '../firebaseConfig';
 
@@ -69,35 +69,41 @@ const NotificationsScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={notifications}
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={[
-              styles.notificationItem,
-              !item.read && styles.unreadNotification
-            ]}
-            onPress={() => handleNotificationPress(item)}
-          >
-            <Text style={styles.notificationType}>
-              {item.type === 'new_request' ? '🚚 New Delivery Request' : item.type}
-            </Text>
-            <Text style={styles.message}>{item.message}</Text>
-            <Text style={styles.timestamp}>{item.timestamp}</Text>
-          </TouchableOpacity>
-        )}
-        keyExtractor={item => item.id}
-      />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.contentContainer}>
+        <Text style={styles.title}>Notifications</Text>
+        <FlatList
+          data={notifications}
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              style={[
+                styles.notificationItem,
+                !item.read && styles.unreadNotification
+              ]}
+              onPress={() => handleNotificationPress(item)}
+            >
+              <Text style={styles.notificationType}>
+                {item.type === 'new_request' ? '🚚 New Delivery Request' : item.type}
+              </Text>
+              <Text style={styles.message}>{item.message}</Text>
+              <Text style={styles.timestamp}>{item.timestamp}</Text>
+            </TouchableOpacity>
+          )}
+          keyExtractor={item => item.id}
+        />
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: '#f5f5f5',
+  },
+  contentContainer: {
+    flex: 1,
+    padding: 20,
   },
   notificationItem: {
     backgroundColor: '#fff',
@@ -127,6 +133,12 @@ const styles = StyleSheet.create({
   timestamp: {
     fontSize: 12,
     color: '#666'
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#333'
   }
 });
 

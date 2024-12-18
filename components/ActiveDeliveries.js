@@ -1,6 +1,6 @@
 // components/ActiveDeliveries.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import { getDatabase, ref, onValue, update } from 'firebase/database';
 import { auth } from '../firebaseConfig';
 
@@ -174,39 +174,44 @@ const ActiveDeliveriesScreen = ({ navigation }) => {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Active Deliveries</Text>
-      <FlatList
-        data={deliveries}
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={styles.deliveryItem}
-            onPress={() => openDeliveryDetails(item)}
-          >
-            <Text style={styles.deliveryId}>Delivery #{item.id}</Text>
-            <Text style={styles.deliveryDetails}>From: {item.pickupAddress}</Text>
-            <Text style={styles.deliveryDetails}>To: {item.deliveryAddress}</Text>
-            <Text style={styles.deliveryStatus}>Status: {item.status}</Text>
-            {pendingRequests[item.id] && (
-              <View style={styles.requestsBadge}>
-                <Text style={styles.requestsCount}>
-                  {Object.keys(pendingRequests[item.id]).length} Requests
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        )}
-        keyExtractor={(item) => item.id}
-      />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.contentContainer}>
+        <Text style={styles.title}>Active Deliveries</Text>
+        <FlatList
+          data={deliveries}
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              style={styles.deliveryItem}
+              onPress={() => openDeliveryDetails(item)}
+            >
+              <Text style={styles.deliveryId}>Delivery #{item.id}</Text>
+              <Text style={styles.deliveryDetails}>From: {item.pickupAddress}</Text>
+              <Text style={styles.deliveryDetails}>To: {item.deliveryAddress}</Text>
+              <Text style={styles.deliveryStatus}>Status: {item.status}</Text>
+              {pendingRequests[item.id] && (
+                <View style={styles.requestsBadge}>
+                  <Text style={styles.requestsCount}>
+                    {Object.keys(pendingRequests[item.id]).length} Requests
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+          keyExtractor={(item) => item.id}
+        />
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: '#f5f5f5',
+  },
+  contentContainer: {
+    flex: 1,
+    padding: 20,
   },
   centerContainer: {
     flex: 1,

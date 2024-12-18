@@ -11,6 +11,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  SafeAreaView,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
@@ -447,253 +448,257 @@ const ClientInputScreen = ({ navigation, route }) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Create Delivery</Text>
-      {/* Get Current Location Button */}
-      <Button title="Get Current Location" onPress={getCurrentLocation} />
-      {/* Toggle Map View */}
-      <TouchableOpacity onPress={() => setShowMap(!showMap)}>
-        <Text style={styles.toggleMapText}>
-          {showMap ? "Hide Map" : "Show Map"}
-        </Text>
-      </TouchableOpacity>
-      {showMap && (
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          onPress={handleMapPress}
-          initialRegion={{
-            latitude: mapMarker ? mapMarker.latitude : 55.68162938805638,
-            longitude: mapMarker ? mapMarker.longitude : 12.529937312745204,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
-          }}
-        >
-          {mapMarker && (
-            <Marker
-              key={`selectedLocation-${mapMarker.latitude}-${mapMarker.longitude}`}
-              coordinate={mapMarker}
-              title="Pickup Location"
-            />
-          )}
-        </MapView>
-      )}
-      {/* Loading Indicator */}
-      {isGeocoding && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#0000ff" />
-          <Text>Processing Address...</Text>
-        </View>
-      )}
-      {/* Pickup Address */}
-      <Text style={styles.label}>Pickup Address</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter pickup address"
-        value={pickupAddress}
-        onChangeText={handleAddressChange}
-        onBlur={handleAddressBlur}
-      />
-      {/* Pickup Coordinates */}
-      <Text style={styles.label}>Or coordinates (Latitude, Longitude)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="e.g., 55.85193, 12.566337"
-        value={`${pickupCoordinates.latitude}, ${pickupCoordinates.longitude}`}
-        onChangeText={handleCoordinatesChange}
-        onBlur={handleCoordinatesBlur}
-      />
-      {/* Delivery Details */}
-      <Text style={styles.label}>Delivery Details</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter delivery details"
-        value={deliveryDetails}
-        onChangeText={setDeliveryDetails}
-      />
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.contentContainer}>
+        <Text style={styles.title}>Create Delivery</Text>
+        {/* Get Current Location Button */}
+        <Button title="Get Current Location" onPress={getCurrentLocation} />
+        {/* Toggle Map View */}
+        <TouchableOpacity onPress={() => setShowMap(!showMap)}>
+          <Text style={styles.toggleMapText}>
+            {showMap ? "Hide Map" : "Show Map"}
+          </Text>
+        </TouchableOpacity>
+        {showMap && (
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            onPress={handleMapPress}
+            initialRegion={{
+              latitude: mapMarker ? mapMarker.latitude : 55.68162938805638,
+              longitude: mapMarker ? mapMarker.longitude : 12.529937312745204,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            }}
+          >
+            {mapMarker && (
+              <Marker
+                key={`selectedLocation-${mapMarker.latitude}-${mapMarker.longitude}`}
+                coordinate={mapMarker}
+                title="Pickup Location"
+              />
+            )}
+          </MapView>
+        )}
+        {/* Loading Indicator */}
+        {isGeocoding && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#0000ff" />
+            <Text>Processing Address...</Text>
+          </View>
+        )}
+        {/* Pickup Address */}
+        <Text style={styles.label}>Pickup Address</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter pickup address"
+          value={pickupAddress}
+          onChangeText={handleAddressChange}
+          onBlur={handleAddressBlur}
+        />
+        {/* Pickup Coordinates */}
+        <Text style={styles.label}>Or coordinates (Latitude, Longitude)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g., 55.85193, 12.566337"
+          value={`${pickupCoordinates.latitude}, ${pickupCoordinates.longitude}`}
+          onChangeText={handleCoordinatesChange}
+          onBlur={handleCoordinatesBlur}
+        />
+        {/* Delivery Details */}
+        <Text style={styles.label}>Delivery Details</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter delivery details"
+          value={deliveryDetails}
+          onChangeText={setDeliveryDetails}
+        />
 
-      {/* Delivery Section */}
-      <Text style={styles.sectionTitle}>Delivery Location</Text>
-      <TouchableOpacity onPress={() => setShowDeliveryMap(!showDeliveryMap)}>
-        <Text style={styles.toggleMapText}>
-          {showDeliveryMap ? "Hide Map" : "Show Map"}
-        </Text>
-      </TouchableOpacity>
-      {showDeliveryMap && (
-        <MapView
-          style={styles.map}
-          onPress={handleDeliveryMapPress}
-          initialRegion={{
-            latitude: mapMarker ? mapMarker.latitude : 55.68162938805638,
-            longitude: mapMarker ? mapMarker.longitude : 12.529937312745204,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
+        {/* Delivery Section */}
+        <Text style={styles.sectionTitle}>Delivery Location</Text>
+        <TouchableOpacity onPress={() => setShowDeliveryMap(!showDeliveryMap)}>
+          <Text style={styles.toggleMapText}>
+            {showDeliveryMap ? "Hide Map" : "Show Map"}
+          </Text>
+        </TouchableOpacity>
+        {showDeliveryMap && (
+          <MapView
+            style={styles.map}
+            onPress={handleDeliveryMapPress}
+            initialRegion={{
+              latitude: mapMarker ? mapMarker.latitude : 55.68162938805638,
+              longitude: mapMarker ? mapMarker.longitude : 12.529937312745204,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            }}
+          >
+            {deliveryMarker && (
+              <Marker coordinate={deliveryMarker} title="Delivery Location" />
+            )}
+          </MapView>
+        )}
+        {isGeocodingDelivery && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#0000ff" />
+            <Text>Processing Address...</Text>
+          </View>
+        )}
+        <Text style={styles.label}>Delivery Address</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter delivery address"
+          value={deliveryAddress}
+          onChangeText={handleDeliveryAddressChange}
+          onBlur={handleDeliveryAddressBlur}
+        />
+        <Text style={styles.label}>Or coordinates (Latitude, Longitude)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g., 55.85193, 12.566337"
+          value={`${deliveryCoordinates.latitude}, ${deliveryCoordinates.longitude}`}
+          onChangeText={handleDeliveryCoordinatesChange}
+          onBlur={handleDeliveryCoordinatesBlur}
+        />
+        {/* Weight */}
+        <Text style={styles.label}>Weight (kg)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter weight"
+          value={weight}
+          onChangeText={setWeight}
+          keyboardType="numeric"
+        />
+        {/* Height */}
+        <Text style={styles.label}>Height (cm)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter height"
+          value={height}
+          onChangeText={setHeight}
+          keyboardType="numeric"
+        />
+        {/* Width */}
+        <Text style={styles.label}>Width (cm)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter width"
+          value={width}
+          onChangeText={setWidth}
+          keyboardType="numeric"
+        />
+        {/* Length */}
+        <Text style={styles.label}>Length (cm)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter length"
+          value={length}
+          onChangeText={setLength}
+          keyboardType="numeric"
+        />
+        {/* Payment
+        <Text style={styles.label}>Payment (€)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter payment amount"
+          value={payment}
+          onChangeText={setPayment}
+          keyboardType="numeric"
+        /> */}
+        {/* Earliest Start Time */}
+        <Text style={styles.label}>Earliest Start Time</Text>
+        <TouchableOpacity onPress={() => setEarliestStartPickerVisibility(true)}>
+          <View style={styles.input}>
+            <Text>{earliestStartTime.toLocaleString()}</Text>
+          </View>
+        </TouchableOpacity>
+        <DateTimePickerModal
+          isVisible={isEarliestStartPickerVisible}
+          mode="datetime"
+          date={earliestStartTime}
+          onConfirm={(date) => {
+            setEarliestStartPickerVisibility(false);
+            setEarliestStartTime(date);
           }}
-        >
-          {deliveryMarker && (
-            <Marker coordinate={deliveryMarker} title="Delivery Location" />
-          )}
-        </MapView>
-      )}
-      {isGeocodingDelivery && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#0000ff" />
-          <Text>Processing Address...</Text>
-        </View>
-      )}
-      <Text style={styles.label}>Delivery Address</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter delivery address"
-        value={deliveryAddress}
-        onChangeText={handleDeliveryAddressChange}
-        onBlur={handleDeliveryAddressBlur}
-      />
-      <Text style={styles.label}>Or coordinates (Latitude, Longitude)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="e.g., 55.85193, 12.566337"
-        value={`${deliveryCoordinates.latitude}, ${deliveryCoordinates.longitude}`}
-        onChangeText={handleDeliveryCoordinatesChange}
-        onBlur={handleDeliveryCoordinatesBlur}
-      />
-      {/* Weight */}
-      <Text style={styles.label}>Weight (kg)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter weight"
-        value={weight}
-        onChangeText={setWeight}
-        keyboardType="numeric"
-      />
-      {/* Height */}
-      <Text style={styles.label}>Height (cm)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter height"
-        value={height}
-        onChangeText={setHeight}
-        keyboardType="numeric"
-      />
-      {/* Width */}
-      <Text style={styles.label}>Width (cm)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter width"
-        value={width}
-        onChangeText={setWidth}
-        keyboardType="numeric"
-      />
-      {/* Length */}
-      <Text style={styles.label}>Length (cm)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter length"
-        value={length}
-        onChangeText={setLength}
-        keyboardType="numeric"
-      />
-      {/* Payment
-      <Text style={styles.label}>Payment (€)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter payment amount"
-        value={payment}
-        onChangeText={setPayment}
-        keyboardType="numeric"
-      /> */}
-      {/* Earliest Start Time */}
-      <Text style={styles.label}>Earliest Start Time</Text>
-      <TouchableOpacity onPress={() => setEarliestStartPickerVisibility(true)}>
-        <View style={styles.input}>
-          <Text>{earliestStartTime.toLocaleString()}</Text>
-        </View>
-      </TouchableOpacity>
-      <DateTimePickerModal
-        isVisible={isEarliestStartPickerVisible}
-        mode="datetime"
-        date={earliestStartTime}
-        onConfirm={(date) => {
-          setEarliestStartPickerVisibility(false);
-          setEarliestStartTime(date);
-        }}
-        onCancel={() => setEarliestStartPickerVisibility(false)}
-      />
-      {/* Latest End Time */}
-      <Text style={styles.label}>Latest End Time</Text>
-      <TouchableOpacity onPress={() => setLatestEndPickerVisibility(true)}>
-        <View style={styles.input}>
-          <Text>{latestEndTime.toLocaleString()}</Text>
-        </View>
-      </TouchableOpacity>
-      <DateTimePickerModal
-        isVisible={isLatestEndPickerVisible}
-        mode="datetime"
-        date={latestEndTime}
-        onConfirm={(date) => {
-          setLatestEndPickerVisibility(false);
-          setLatestEndTime(date);
-        }}
-        onCancel={() => setLatestEndPickerVisibility(false)}
-      />
-      {/* Service Time */}
-      <Text style={styles.label}>Service Time at Stop (minutes)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="e.g., 10"
-        value={serviceTime !== "" ? serviceTime.toString() : ""}
-        onChangeText={(text) => {
-          if (text === "") {
-            setServiceTime("");
-          } else {
-            const parsed = parseInt(text, 10);
-            if (!isNaN(parsed)) {
-              setServiceTime(parsed);
+          onCancel={() => setEarliestStartPickerVisibility(false)}
+        />
+        {/* Latest End Time */}
+        <Text style={styles.label}>Latest End Time</Text>
+        <TouchableOpacity onPress={() => setLatestEndPickerVisibility(true)}>
+          <View style={styles.input}>
+            <Text>{latestEndTime.toLocaleString()}</Text>
+          </View>
+        </TouchableOpacity>
+        <DateTimePickerModal
+          isVisible={isLatestEndPickerVisible}
+          mode="datetime"
+          date={latestEndTime}
+          onConfirm={(date) => {
+            setLatestEndPickerVisibility(false);
+            setLatestEndTime(date);
+          }}
+          onCancel={() => setLatestEndPickerVisibility(false)}
+        />
+        {/* Service Time */}
+        <Text style={styles.label}>Service Time at Stop (minutes)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g., 10"
+          value={serviceTime !== "" ? serviceTime.toString() : ""}
+          onChangeText={(text) => {
+            if (text === "") {
+              setServiceTime("");
             } else {
-              Alert.alert(
-                "Invalid Input",
-                "Please enter a valid number for service time."
-              );
+              const parsed = parseInt(text, 10);
+              if (!isNaN(parsed)) {
+                setServiceTime(parsed);
+              } else {
+                Alert.alert(
+                  "Invalid Input",
+                  "Please enter a valid number for service time."
+                );
+              }
             }
-          }
-        }}
-        keyboardType="numeric"
-      />
-      {/* Delivery Priority */}
-      <Text style={styles.label}>Delivery Priority (1-10)</Text>
-      <TextInput
-        style={styles.input}
-        value={priority}
-        onChangeText={setPriority}
-        keyboardType="numeric"
-      />
+          }}
+          keyboardType="numeric"
+        />
+        {/* Delivery Priority */}
+        <Text style={styles.label}>Delivery Priority (1-10)</Text>
+        <TextInput
+          style={styles.input}
+          value={priority}
+          onChangeText={setPriority}
+          keyboardType="numeric"
+        />
 
-      {/* Prize/Bonus */}
-      <Text style={styles.label}>Prize/Bonus (€)</Text>
-      <TextInput
-        style={styles.input}
-        value={prize}
-        onChangeText={setPrize}
-        keyboardType="numeric"
-      />
+        {/* Prize/Bonus */}
+        <Text style={styles.label}>Prize/Bonus (€)</Text>
+        <TextInput
+          style={styles.input}
+          value={prize}
+          onChangeText={setPrize}
+          keyboardType="numeric"
+        />
 
-      {/* Add checkboxes for vehicle types */}
-      <Text style={styles.label}>Required Vehicle Types</Text>
-      <View style={styles.checkboxContainer}>
         {/* Add checkboxes for vehicle types */}
-      </View>
-      {/* Create Delivery Button */}
-      <Button title="Create Delivery" onPress={handleCreateDelivery} />
-    </ScrollView>
+        <Text style={styles.label}>Required Vehicle Types</Text>
+        <View style={styles.checkboxContainer}>
+          {/* Add checkboxes for vehicle types */}
+        </View>
+        {/* Create Delivery Button */}
+        <Button title="Create Delivery" onPress={handleCreateDelivery} />
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  contentContainer: {
     flexGrow: 1,
-    justifyContent: "center",
     padding: 20,
-    backgroundColor: "#f9f9f9",
   },
   title: {
     fontSize: 24,

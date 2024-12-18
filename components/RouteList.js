@@ -1,7 +1,7 @@
 // /components/RouteList.js
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView } from 'react-native';
 import { getDatabase, ref, onValue } from 'firebase/database';
 import { auth } from '../firebaseConfig';
 
@@ -56,25 +56,34 @@ const RouteListScreen = ({ navigation }) => {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Your Generated Routes</Text>
-      <FlatList
-        data={routes}
-        keyExtractor={item => item.id}
-        renderItem={({ item, index }) => (
-          <TouchableOpacity style={styles.item} onPress={() => handleRouteSelect(item)}>
-            <Text style={styles.itemTitle}>Route {index + 1}</Text>
-            <Text>Stops: {item.routes && item.routes[0] ? item.routes[0].stops.length : 0}</Text>
-            <Text>Payment: {Math.round(item.totalCost)}</Text>
-          </TouchableOpacity>
-        )}
-      />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.contentContainer}>
+        <Text style={styles.title}>Your Generated Routes</Text>
+        <FlatList
+          data={routes}
+          keyExtractor={item => item.id}
+          renderItem={({ item, index }) => (
+            <TouchableOpacity style={styles.item} onPress={() => handleRouteSelect(item)}>
+              <Text style={styles.itemTitle}>Route {index + 1}</Text>
+              <Text>Stops: {item.routes && item.routes[0] ? item.routes[0].stops.length : 0}</Text>
+              <Text>Payment: {Math.round(item.totalCost)}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex:1, padding:20, backgroundColor:'#f9f9f9' },
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  contentContainer: {
+    flex: 1,
+    padding: 20,
+  },
   center:{flex:1, justifyContent:'center', alignItems:'center'},
   title:{fontSize:24, fontWeight:'bold', marginBottom:20, textAlign:'center'},
   item:{

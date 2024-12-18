@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Alert,
   Button,
+  SafeAreaView,
+  ScrollView,
 } from "react-native";
 import { getDatabase, ref, onValue, set, push, update } from "firebase/database";
 import { auth } from "../firebaseConfig";
@@ -351,34 +353,38 @@ const prepareCuOptPayload = async (deliveries, constraints) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Route Optimization</Text>
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0000ff" />
-          <Text style={styles.statusText}>{optimizationStatus}</Text>
-        </View>
-      ) : (
-        <View style={styles.contentContainer}>
-          <Text style={styles.statusText}>
-            Ready to optimize routes. Press the button below to start.
-          </Text>
-          <View style={styles.buttonContainer}>
-            <Button 
-              title="Generate Optimized Routes" 
-              onPress={handleOptimizePress}
-              disabled={loading} 
-            />
-            <View style={styles.buttonSpacing}>
-              <Button 
-                title="View Generated Routes" 
-                onPress={() => navigation.navigate('RouteList')} 
-              />
+    <SafeAreaView style={styles.container}>
+      <View style={styles.contentContainer}>
+        <ScrollView>
+          <Text style={styles.title}>Generate Routes</Text>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#0000ff" />
+              <Text style={styles.statusText}>{optimizationStatus}</Text>
             </View>
-          </View>
-        </View>
-      )}
-    </View>
+          ) : (
+            <View style={styles.contentContainer}>
+              <Text style={styles.statusText}>
+                Ready to optimize routes. Press the button below to start.
+              </Text>
+              <View style={styles.buttonContainer}>
+                <Button 
+                  title="Generate Optimized Routes" 
+                  onPress={handleOptimizePress}
+                  disabled={loading} 
+                />
+                <View style={styles.buttonSpacing}>
+                  <Button 
+                    title="View Generated Routes" 
+                    onPress={() => navigation.navigate('RouteList')} 
+                  />
+                </View>
+              </View>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
   
   
@@ -387,10 +393,7 @@ const prepareCuOptPayload = async (deliveries, constraints) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: '#f5f5f5',
   },
   statusText: {
     fontSize: 16,
@@ -414,8 +417,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     padding: 20,
   },
   buttonContainer: {
