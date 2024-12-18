@@ -43,6 +43,7 @@
     "expo-status-bar": "~2.0.0",
     "firebase": "^10.7.1",
     "firebase-admin": "^13.0.1",
+    "nanoid": "^3.3.8",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-native": "0.76.5",
