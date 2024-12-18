@@ -65,7 +65,7 @@ const RouteListScreen = ({ navigation }) => {
           <TouchableOpacity style={styles.item} onPress={() => handleRouteSelect(item)}>
             <Text style={styles.itemTitle}>Route {index + 1}</Text>
             <Text>Stops: {item.routes && item.routes[0] ? item.routes[0].stops.length : 0}</Text>
-            <Text>Cost: {Math.round(item.totalCost)}</Text>
+            <Text>Payment: {Math.round(item.totalCost)}</Text>
           </TouchableOpacity>
         )}
       />

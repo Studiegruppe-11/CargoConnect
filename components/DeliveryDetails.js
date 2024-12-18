@@ -1,6 +1,6 @@
 // components/DeliveryDetails.js
 
-import React from "react";
+import React, { useContext } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { database, auth } from "../firebaseConfig";
 
 const DeliveryDetailsScreen = ({ route, navigation }) => {
   const { delivery } = route.params;
+  const currentUser = auth.currentUser; // Use currentUser
 
   const acceptStop = () => {
     if (!delivery || !delivery.id) {
@@ -24,8 +25,7 @@ const DeliveryDetailsScreen = ({ route, navigation }) => {
     }
 
     // Fetch user's current route ID
-    const user = auth.currentUser;
-    const userRef = ref(database, `users/${user.uid}/currentRouteId`);
+    const userRef = ref(database, `users/${currentUser.uid}/currentRouteId`);
 
     onValue(userRef, (snapshot) => {
       const currentRouteId = snapshot.val();

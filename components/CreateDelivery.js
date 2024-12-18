@@ -118,7 +118,7 @@ const ClientInputScreen = ({ navigation, route }) => {
   const [height, setHeight] = useState("");
   const [width, setWidth] = useState("");
   const [length, setLength] = useState("");
-  const [payment, setPayment] = useState("");
+  // const [payment, setPayment] = useState("");
   const [earliestStartTime, setEarliestStartTime] = useState(new Date());
   const [latestEndTime, setLatestEndTime] = useState(new Date());
   const [serviceTime, setServiceTime] = useState(10); // in minutes
@@ -430,15 +430,9 @@ const ClientInputScreen = ({ navigation, route }) => {
       width: parseFloat(width),
       length: parseFloat(length),
       payment: parseFloat(payment),
-      earliestStartTime: Math.floor(earliestStartTime.getTime() / 1000), // Convert to integer
-      latestEndTime: Math.floor(latestEndTime.getTime() / 1000), // Convert to integer
-      serviceTime: parseInt(serviceTime, 10) * 60, // Convert minutes to seconds
-      routeId: routeId || null, // Associate with route if routeId is provided
-      status: "pending", // Optional: Add status field
-      priority: parseInt(priority),
-      isMandatory,
-      prize: parseFloat(prize),
-      vehicleTypeRequired,
+      companyId: auth.currentUser.uid, // Add this line
+      status: 'pending',
+      createdAt: Date.now()
     };
     try {
       const deliveryRef = ref(db, "deliveries");
@@ -599,7 +593,7 @@ const ClientInputScreen = ({ navigation, route }) => {
         onChangeText={setLength}
         keyboardType="numeric"
       />
-      {/* Payment */}
+      {/* Payment
       <Text style={styles.label}>Payment (€)</Text>
       <TextInput
         style={styles.input}
@@ -607,7 +601,7 @@ const ClientInputScreen = ({ navigation, route }) => {
         value={payment}
         onChangeText={setPayment}
         keyboardType="numeric"
-      />
+      /> */}
       {/* Earliest Start Time */}
       <Text style={styles.label}>Earliest Start Time</Text>
       <TouchableOpacity onPress={() => setEarliestStartPickerVisibility(true)}>

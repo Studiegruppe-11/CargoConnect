@@ -150,16 +150,17 @@ export const processOptimizedRoutes = async (responseBody, locations) => {
 
   if (resp?.solver_response) {
     console.log("Feasible solution found");
-    const { vehicle_data, solution_cost, num_vehicles } = resp.solver_response;
+    // Invert the sign of solution_cost since it represents profit
+    const solution_cost = -resp.solver_response.solution_cost;
+    const { vehicle_data, num_vehicles } = resp.solver_response;
     const optimizedRoutes = [];
 
     Object.entries(vehicle_data).forEach(([vehicleId, data]) => {
       const route = {
         vehicleId,
         stops: [],
-        totalCost: solution_cost,
+        totalCost: solution_cost, // Use the inverted cost here
         totalTime: 0,
-        //, profit: 0 we dont calcualte this anymore, keeping for future if needed
       };
 
       data.task_id.forEach((taskId, index) => {
@@ -184,14 +185,16 @@ export const processOptimizedRoutes = async (responseBody, locations) => {
 
     return {
       routes: optimizedRoutes,
-      totalCost: solution_cost,
+      totalCost: solution_cost, // Use the inverted cost here
       vehiclesUsed: num_vehicles,
     };
   } else if (resp?.solver_infeasible_response) {
     console.warn("No feasible solution found.");
+    // Invert the sign for infeasible solutions as well
+    const solution_cost = -resp.solver_infeasible_response.solution_cost;
     return {
       routes: [],
-      totalCost: resp.solver_infeasible_response.solution_cost,
+      totalCost: solution_cost,
       vehiclesUsed: resp.solver_infeasible_response.num_vehicles,
       infeasible: true,
       message: "No feasible solution found",

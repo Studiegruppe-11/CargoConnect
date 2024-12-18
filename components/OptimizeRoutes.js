@@ -9,7 +9,7 @@ import {
   Alert,
   Button,
 } from "react-native";
-import { getDatabase, ref, onValue, set, push } from "firebase/database";
+import { getDatabase, ref, onValue, set, push, update } from "firebase/database";
 import { auth } from "../firebaseConfig";
 import { useIsFocused } from "@react-navigation/native";
 import { onAuthStateChanged } from "firebase/auth";
@@ -36,6 +36,20 @@ const OptimizeRoutesScreen = ({ navigation }) => {
   const [error, setError] = useState(null);
   const isFocused = useIsFocused();
   const database = getDatabase();
+
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        setCurrentUser(user);
+      } else {
+        Alert.alert('Error', 'Please login first');
+        navigation.navigate('Login');
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   console.log("OptimizeRoutesScreen mounted.");
 
@@ -307,6 +321,32 @@ const prepareCuOptPayload = async (deliveries, constraints) => {
       handleOptimizationError(error);
     } finally {
       setOptimizing(false);
+    }
+  };
+
+  const requestRoute = async (optimizedRoute) => {
+    if (!currentUser) {
+      Alert.alert('Error', 'Please login first');
+      return;
+    }
+  
+    try {
+      const db = getDatabase();
+      for (const delivery of optimizedRoute.deliveries) {
+        const deliveryRef = ref(db, `deliveries/${delivery.id}`);
+        await update(deliveryRef, {
+          [`requests/${currentUser.uid}`]: {
+            truckerName: currentUser.displayName || currentUser.email,
+            requestTime: Date.now(),
+            routeId: optimizedRoute.id
+          }
+        });
+      }
+  
+      Alert.alert('Success', 'Route request sent to companies');
+    } catch (error) {
+      console.error('Error requesting route:', error);
+      Alert.alert('Error', 'Failed to request route');
     }
   };
 

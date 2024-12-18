@@ -48,9 +48,9 @@ export default {
       GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY
     },
     experiments: {
-      tsconfigPaths: true,
-      newArchEnabled: true
+      tsconfigPaths: true
     },
+      newArchEnabled: true,
     plugins: [
       [
         'expo-image-picker',
