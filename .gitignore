@@ -36,8 +36,8 @@ yarn-error.*
 *.tsbuildinfo
 
 # Windows system directories and temporary files
-/inno/DeliveryApp/%ProgramData%/
-inno/DeliveryApp/%ProgramData%/Microsoft/Windows/UUS/State/_active.uusver
+/%ProgramData%/
+_active.uusver
 
 # Expo specific
 .expo/

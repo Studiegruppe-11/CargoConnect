@@ -1,20 +1,168 @@
+# CargoConnect (brug branch main-v2)
+
+En mobilapplikation til at lave avanceret profitmaksimering, samt forbinde chauffører med virksomheder, der har brug for transporttjenester.
+
+## Ruteoptimering
+
+Applikationen laver ruteoptimering baseret på følgende komponenter:
+
+### Distance Beregning
+- Primær: Google Routes Matrix API til præcis afstand og køretid mellem alle punkter
+- Fallback: Haversine formel (fugleflugtslinje med jordens krumning) hvis API ikke er tilgængelig
+
+### Optimering med NVIDIA CUOPT
+- Vehicle Routing Problem (VRP) løsning via NVIDIA CUOPT
+- Tager højde for:
+  - Tidsvinduer for leveringer
+  - Køre/hviletidsregler
+  - Lastkapacitet
+  - Servicetid ved stop
+  - Prioriteter på leveringer
+  - Multiple depoter
+  - Betaling
+- Optimerer for:
+  - Minimering af total køretid/distance
+  - Maksimering af antal leverede pakker
+  - Balancering af arbejdsbyrde mellem chauffører
+
+## Funktionaliteter
+
+### Min side (Chauffør)
+- Indtastning af personlige oplysninger
+- Indtastning af nummerplade
+- "Scanning" (billedeupload) af kørekort
+- Indtastning af lastkapacitet til rutegenerering
+- Visning af nuværende rating
+- Indtastning af startlokation og arbejdstid
+- Præferenceindstillinger
+
+### Min side (Virksomhed)
+- Oprettelse af arbejdsopgaver med titel, billede, beskrivelse og pris
+- Valg af start- og slutdestination via adresse eller kort
+- Angivelse af datofrister
+- Modtagelse af chaufførtilbud og accept af enkeltchauffører
+- Favoritchauffører liste
+
+### Opgavehåndtering
+- Liste og kortvisning af tilgængelige opgaver
+- Detaljeret opgavevisning med placering, estimeret indtjening og virksomhedens rating
+- Mulighed for at acceptere eller afvise opgaver
+- Statusoverblik og afslutning af opgaver
+
+### Kapacitetsstyring
+- Indtastning og visning af eksisterende ruter
+- Filtrering af opgaver efter tilgængelig kapacitet
+
+### Kommunikation og Notifikationer
+- Push notifikationer om nye opgaver og statusopdateringer
+
+## Teknisk Stack
+- **React Native med Expo**
+- **Firebase**
+  - Authentication
+  - Realtime Database
+- **GeoCode Maps API**
+- **Google Maps Distance Matrix API**
+
 ## Opsætning
 
-1. Kør `npm install` i root for at installere alle dependencies.
+### 1. Klon projektet og installer dependencies
+```bash
+git clone [repository-url]
+cd CargoConnect
+npm install
+```
 
-2. Opret en `.env`-fil i root med følgende format (kræver man har realtime database og authentication sat op i Firebase samt en api-nøgle til  [GeoCode Free Api](https://geocode.maps.co/)):
+### 2. Firebase Opsætning
+- Opret et nyt Firebase projekt på Firebase Console
+- Aktiver Authentication med email/password
+- Aktiver Realtime Database
+- Download Firebase konfigurationsfilen
 
-    ```plaintext
-    FIREBASE_API_KEY=
-    FIREBASE_AUTH_DOMAIN=
-    FIREBASE_DATABASE_URL=
-    FIREBASE_PROJECT_ID=
-    FIREBASE_STORAGE_BUCKET=
-    FIREBASE_MESSAGING_SENDER_ID=
-    FIREBASE_APP_ID=
-    GEOCODE_MAPS_APIKEY=
-    ```
+### 3. Opret .env fil
+Opret en .env fil i roden af projektet med følgende variabler:
 
-3. Start projektet med `npx expo`. Hvis du oplever problemer, kan det hjælpe at rydde cachen ved opstart. Brug evt. `npm start --reset-cache`, da der har været enkelte problemer med Expo CLI.
+```plaintext
+# Firebase Config
+FIREBASE_API_KEY=din-api-nøgle
+FIREBASE_AUTH_DOMAIN=dit-projekt.firebaseapp.com
+FIREBASE_DATABASE_URL=https://dit-projekt.firebaseio.com
+FIREBASE_PROJECT_ID=dit-projekt-id
+FIREBASE_STORAGE_BUCKET=dit-projekt.appspot.com
+FIREBASE_MESSAGING_SENDER_ID=din-sender-id
+FIREBASE_APP_ID=din-app-id
 
-> **Bemærk:** Ja, det er et nested repository. Nej, det er ikke fedt. Det bliver rykket i andet repository asap.
+# GeoCode Maps API
+GEOCODE_MAPS_APIKEY=din-geocode-api-nøgle
+
+# Google Maps (Valgfrit - bruges til ruteoptimering. Fallback er "Haversine" - fugleflugt med jordens hældning indregnet)
+GOOGLE_MAPS_API_KEY=din-google-maps-api-nøgle
+```
+
+### 4. Start Udviklingsserveren
+```bash
+npx expo start
+```
+
+## Database Struktur
+```plaintext
+├── users/
+│   └── [userId]/
+│       ├── dimensions/
+│       │   ├── height
+│       │   ├── length
+│       │   └── width
+│       ├── licensePlate
+│       ├── maxCargoWeight
+│       ├── role: "trucker" | "company"
+│       ├── startLatitude
+│       ├── startLongitude
+│       └── vehicleId
+├── deliveries/
+│   └── [deliveryId]/
+│       ├── companyId
+│       ├── deliveryAddress
+│       ├── deliveryDetails
+│       ├── deliveryLocation/
+│       │   ├── latitude
+│       │   └── longitude
+│       ├── earliestStartTime
+│       ├── height
+│       ├── isMandatory
+│       ├── latestEndTime
+│       ├── length
+│       ├── payment
+│       ├── pickupAddress
+│       ├── pickupLocation/
+│       │   ├── latitude
+│       │   └── longitude
+│       ├── priority
+│       ├── prize
+│       ├── requests/
+│       │   └── [truckerId]/
+│       │       ├── licensePlate
+│       │       ├── rating
+│       │       ├── requestTime
+│       │       ├── routeId
+│       │       ├── truckType
+│       │       ├── truckerName
+│       │       └── truckerProfile
+│       ├── serviceTime
+│       ├── status
+│       ├── weight
+│       └── width
+├── notifications/
+│   └── [userId]/
+│       └── [notificationId]/
+│           ├── deliveryId
+│           ├── message
+│           ├── status
+│           ├── timestamp
+│           ├── truckerId
+│           └── type
+└── routes/
+    └── [userId]/
+        ├── distances
+        ├── durations
+        └── locations
+```
