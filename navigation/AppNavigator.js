@@ -5,7 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { getDatabase, ref, get } from 'firebase/database';
+import { getDatabase, ref, get, onValue } from 'firebase/database';
 import { SafeAreaView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
@@ -151,21 +151,28 @@ export default function AppNavigator() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user);
-        // Fetch user role
+        // Set up real-time listener for role changes
         const roleRef = ref(db, `users/${user.uid}/role`);
-        const snapshot = await get(roleRef);
-        if (snapshot.exists()) {
-          setRole(snapshot.val());
-        } else {
-          console.warn('No role found for this user.');
-          setRole(null);
-        }
+        const roleUnsubscribe = onValue(roleRef, (snapshot) => {
+          if (snapshot.exists()) {
+            setRole(snapshot.val());
+          } else {
+            console.warn('No role found for this user.');
+            setRole(null);
+          }
+          setLoading(false);
+        });
+
+        return () => {
+          roleUnsubscribe(); // Clean up role listener
+        };
       } else {
         setCurrentUser(null);
         setRole(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
+
     return () => unsubscribe();
   }, [auth, db]);
 
