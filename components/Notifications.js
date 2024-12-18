@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
-import { getDatabase, ref, onValue, get } from 'firebase/database';
+import { getDatabase, ref, onValue } from 'firebase/database';
 import { auth } from '../firebaseConfig';
+import { fetchNotificationData, handleNotificationPress } from '../utils/notificationUtils';
 
 const NotificationsScreen = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
@@ -18,23 +19,7 @@ const NotificationsScreen = ({ navigation }) => {
       if (data) {
         const notificationList = await Promise.all(
           Object.entries(data).map(async ([id, notification]) => {
-            // If it's a request notification, fetch the delivery details
-            if (notification.type === 'new_request') {
-              const deliveryRef = ref(db, `deliveries/${notification.deliveryId}`);
-              const deliverySnap = await get(deliveryRef);
-              const delivery = deliverySnap.val();
-              return {
-                id,
-                ...notification,
-                delivery,
-                timestamp: new Date(parseInt(id)).toLocaleString()
-              };
-            }
-            return {
-              id,
-              ...notification,
-              timestamp: new Date(parseInt(id)).toLocaleString()
-            };
+            return await fetchNotificationData({ id, ...notification });
           })
         );
         setNotifications(notificationList.sort((a, b) => b.id - a.id));
@@ -43,30 +28,6 @@ const NotificationsScreen = ({ navigation }) => {
 
     return () => unsubscribe();
   }, []);
-
-  const handleNotificationPress = async (notification) => {
-    if (notification.type === 'new_request') {
-      if (!notification.deliveryId) {
-        Alert.alert('Error', 'Delivery ID is missing in the notification.');
-        return;
-      }
-
-      const deliveryRef = ref(db, `deliveries/${notification.deliveryId}`);
-      const deliverySnapshot = await get(deliveryRef);
-      const delivery = deliverySnapshot.val();
-
-      if (!delivery) {
-        Alert.alert('Error', 'Delivery data not found.');
-        return;
-      }
-
-      navigation.navigate('DeliveryDetailsEdit', {
-        delivery,
-        requests: delivery.requests || {},
-      });
-    }
-    // Handle other notification types...
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -80,7 +41,7 @@ const NotificationsScreen = ({ navigation }) => {
                 styles.notificationItem,
                 !item.read && styles.unreadNotification
               ]}
-              onPress={() => handleNotificationPress(item)}
+              onPress={() => handleNotificationPress(item, navigation)}
             >
               <Text style={styles.notificationType}>
                 {item.type === 'new_request' ? '🚚 New Delivery Request' : item.type}

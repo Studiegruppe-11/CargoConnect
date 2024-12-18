@@ -10,7 +10,7 @@ const ActiveDeliveriesScreen = ({ navigation }) => {
   const [pendingRequests, setPendingRequests] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
 
-  const db = getDatabase(); // Define db here
+  const db = getDatabase(); 
 
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((user) => {

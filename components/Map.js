@@ -17,15 +17,17 @@ import { getDatabase, ref, onValue, off } from "firebase/database";
 import { auth } from "../firebaseConfig";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as Location from "expo-location";
+import { fetchUserLocation, calcDistanceKm } from '../utils/locationUtils';
+import { fetchCurrentRoute } from '../utils/routeUtils';
 
 export default function MapScreen({ navigation }) {
   const [deliveries, setDeliveries] = useState([]);
   const [currentRoute, setCurrentRoute] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
-  const [role, setRole] = useState(null); // To determine if user is trucker or company
+  const [role, setRole] = useState(null); 
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [maxDistanceKm, setMaxDistanceKm] = useState(""); // Filter criteria
-  const [routesList, setRoutesList] = useState([]); // List of user's generated routes
+  const [maxDistanceKm, setMaxDistanceKm] = useState(""); 
+  const [routesList, setRoutesList] = useState([]); 
   const [routeSelectionModalVisible, setRouteSelectionModalVisible] =
     useState(false);
 
@@ -53,7 +55,7 @@ export default function MapScreen({ navigation }) {
     const handleCurrentRouteIdChange = (snapshot) => {
       const currentRouteId = snapshot.val();
       if (currentRouteId) {
-        fetchCurrentRoute(currentRouteId, user.uid);
+        fetchCurrentRoute(currentRouteId, user.uid, db, setCurrentRoute);
       } else {
         setCurrentRoute(null);
       }
@@ -104,45 +106,11 @@ export default function MapScreen({ navigation }) {
     };
   }, []);
 
-  const fetchCurrentRoute = (routeId, userId) => {
-    const routeRef = ref(db, `routes/${userId}/${routeId}`);
-    const handleRouteChange = (snapshot) => {
-      const data = snapshot.val();
-      if (data && data.coordinates) {
-        const formattedCoordinates = data.coordinates.map((coord) => ({
-          latitude: coord.latitude,
-          longitude: coord.longitude,
-        }));
-        setCurrentRoute({
-          id: routeId,
-          ...data,
-          coordinates: formattedCoordinates,
-        });
-      } else {
-        setCurrentRoute(null);
-      }
-    };
-    onValue(routeRef, handleRouteChange);
-  };
-
-  const fetchUserLocation = async () => {
+  const centerOnUser = async () => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Denied",
-          "Permission to access location was denied."
-        );
-        return;
-      }
-
-      const location = await Location.getCurrentPositionAsync({});
-      const coords = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
+      const coords = await fetchUserLocation();
       setUserLocation(coords);
-
+      
       if (mapRef.current) {
         mapRef.current.animateToRegion(
           {
@@ -155,23 +123,7 @@ export default function MapScreen({ navigation }) {
       }
     } catch (error) {
       Alert.alert("Location Error", "Failed to get current location.");
-      console.error("Location Fetch Error:", error);
     }
-  };
-
-  // Calculate distance between two coords in km
-  const calcDistanceKm = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Earth radius in km
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
   };
 
   // Apply filtering based on maxDistanceKm if provided
@@ -223,19 +175,6 @@ export default function MapScreen({ navigation }) {
       return;
     }
     navigation.navigate("New Delivery", { routeId: currentRoute.id });
-  };
-
-  const centerOnUser = () => {
-    if (userLocation && mapRef.current) {
-      mapRef.current.animateToRegion(
-        {
-          ...userLocation,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
-        },
-        1000
-      );
-    }
   };
 
   return (
