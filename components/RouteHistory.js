@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { getDatabase, ref, onValue } from 'firebase/database';
 import { auth } from '../firebaseConfig';
 
@@ -13,7 +20,7 @@ const RouteHistoryScreen = ({ navigation }) => {
 
     const db = getDatabase();
     const routesRef = ref(db, `routes/${user.uid}`);
-    
+
     const unsubscribe = onValue(routesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -21,10 +28,12 @@ const RouteHistoryScreen = ({ navigation }) => {
           .map(([id, route]) => ({
             id,
             ...route,
-            date: new Date(route.timestamp).toLocaleDateString()
+            date: new Date(route.timestamp).toLocaleDateString(),
           }))
           .sort((a, b) => b.timestamp - a.timestamp);
         setRoutes(routeList);
+      } else {
+        setRoutes([]);
       }
       setLoading(false);
     });
@@ -36,22 +45,48 @@ const RouteHistoryScreen = ({ navigation }) => {
     navigation.navigate('RouteDetails', { route });
   };
 
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#2F67B2" />
+      </View>
+    );
+  }
+
+  if (routes.length === 0) {
+    return (
+      <View style={styles.center}>
+        <Text>No routes found.</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Route History</Text>
       <FlatList
         data={routes}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.routeItem}
             onPress={() => handleRouteSelect(item)}
           >
             <Text style={styles.routeDate}>{item.date}</Text>
-            <Text>Stops: {item.routes[0].stops.length}</Text>
-            <Text>Total Cost: {Math.round(item.totalCost)}</Text>
+            <Text>
+              Stops:{' '}
+              {item.routes && item.routes[0] && item.routes[0].stops
+                ? item.routes[0].stops.length
+                : 'N/A'}
+            </Text>
+            <Text>
+              Total Cost:{' '}
+              {item.totalCost !== undefined
+                ? Math.round(item.totalCost)
+                : 'N/A'}
+            </Text>
           </TouchableOpacity>
         )}
-        keyExtractor={item => item.id}
       />
     </View>
   );
@@ -63,6 +98,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#f5f5f5',
   },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
