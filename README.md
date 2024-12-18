@@ -1,4 +1,4 @@
-# CargoConnect
+# CargoConnect (brug branch main-v2)
 
 En mobilapplikation til at lave avanceret profitmaksimering, samt forbinde chauffører med virksomheder, der har brug for transporttjenester.
 
