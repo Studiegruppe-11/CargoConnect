@@ -1,4 +1,5 @@
 // components/Map.js
+// Til at vise kort og leveringer
 
 import React, { useEffect, useState, useRef } from "react";
 import {
@@ -20,37 +21,38 @@ import * as Location from "expo-location";
 import { fetchUserLocation, calcDistanceKm } from '../utils/locationUtils';
 import { fetchCurrentRoute } from '../utils/routeUtils';
 
+// Skærm til visning af kort og håndtering af leveringer
 export default function MapScreen({ navigation }) {
-  const [deliveries, setDeliveries] = useState([]);
-  const [currentRoute, setCurrentRoute] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
-  const [role, setRole] = useState(null); 
-  const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [maxDistanceKm, setMaxDistanceKm] = useState(""); 
-  const [routesList, setRoutesList] = useState([]); 
-  const [routeSelectionModalVisible, setRouteSelectionModalVisible] =
-    useState(false);
+  const [deliveries, setDeliveries] = useState([]); // Tilstand for leveringsdata
+  const [currentRoute, setCurrentRoute] = useState(null); // Tilstand for den aktuelle rute
+  const [userLocation, setUserLocation] = useState(null); // Tilstand for brugerens placering
+  const [role, setRole] = useState(null); // Tilstand for brugerens rolle
+  const [filterModalVisible, setFilterModalVisible] = useState(false); // Tilstand for filter-modal
+  const [maxDistanceKm, setMaxDistanceKm] = useState(""); // Tilstand for maksimal afstandsfilter
+  const [routesList, setRoutesList] = useState([]); // Tilstand for liste over ruter
+  const [routeSelectionModalVisible, setRouteSelectionModalVisible] = useState(false); // Tilstand for rutevalg-modal
 
   const db = getDatabase();
-  const mapRef = useRef(null);
+  const mapRef = useRef(null); // Reference til kortet
 
+  // Effekt hook til at hente data og lytte til ændringer
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) {
-      Alert.alert("Error", "User not authenticated.");
+      Alert.alert("Fejl", "Bruger ikke autentificeret.");
       return;
     }
 
-    // Fetch user role
+    // Hent brugerens rolle
     const userRoleRef = ref(db, `users/${user.uid}/role`);
     const handleRoleChange = (snapshot) => {
       const userRole = snapshot.val();
       setRole(userRole);
-      console.log("MapScreen role:", userRole);
+      console.log("MapScreen rolle:", userRole);
     };
     onValue(userRoleRef, handleRoleChange);
 
-    // Reference to user's currentRouteId
+    // Reference til brugerens aktuelle rute-ID
     const currentRouteIdRef = ref(db, `users/${user.uid}/currentRouteId`);
     const handleCurrentRouteIdChange = (snapshot) => {
       const currentRouteId = snapshot.val();
@@ -62,7 +64,7 @@ export default function MapScreen({ navigation }) {
     };
     onValue(currentRouteIdRef, handleCurrentRouteIdChange);
 
-    // Fetch all deliveries
+    // Hent alle leveringer
     const deliveriesRef = ref(db, "deliveries");
     const handleDeliveriesChange = (snapshot) => {
       const data = snapshot.val();
@@ -78,7 +80,7 @@ export default function MapScreen({ navigation }) {
     };
     onValue(deliveriesRef, handleDeliveriesChange);
 
-    // Fetch user's generated routes
+    // Hent brugerens genererede ruter
     const routesRef = ref(db, `routes/${user.uid}`);
     const handleRoutesChange = (snapshot) => {
       const data = snapshot.val();
@@ -95,9 +97,10 @@ export default function MapScreen({ navigation }) {
     };
     onValue(routesRef, handleRoutesChange);
 
+    // Hent brugerens nuværende placering
     fetchUserLocation();
 
-    // Cleanup
+    // Ryd lyttere ved unmount
     return () => {
       off(userRoleRef, "value", handleRoleChange);
       off(currentRouteIdRef, "value", handleCurrentRouteIdChange);
@@ -106,11 +109,12 @@ export default function MapScreen({ navigation }) {
     };
   }, []);
 
+  // Funktion til at centrere kortet på brugerens placering
   const centerOnUser = async () => {
     try {
       const coords = await fetchUserLocation();
       setUserLocation(coords);
-      
+
       if (mapRef.current) {
         mapRef.current.animateToRegion(
           {
@@ -122,11 +126,11 @@ export default function MapScreen({ navigation }) {
         );
       }
     } catch (error) {
-      Alert.alert("Location Error", "Failed to get current location.");
+      Alert.alert("Placering Fejl", "Kunne ikke hente nuværende placering.");
     }
   };
 
-  // Apply filtering based on maxDistanceKm if provided
+  // Anvend filtrering baseret på maksimal afstand, hvis angivet
   let filteredDeliveries = deliveries;
   if (currentRoute) {
     filteredDeliveries = filteredDeliveries.filter(
@@ -147,31 +151,35 @@ export default function MapScreen({ navigation }) {
           );
           return dist <= maxDist;
         }
-        return true; // If no pickupLocation or userLocation, don't filter out
+        return true; // Hvis ingen afhentningsplacering eller brugerplacering, filtrer ikke ud
       });
     }
   }
 
+  // Funktion til at åbne modal for rutevalg
   const openRouteSelectionModal = () => {
     if (routesList.length === 0) {
-      Alert.alert("No Routes", "You have not generated any routes yet.");
+      Alert.alert("Ingen Ruter", "Du har ikke genereret nogen ruter endnu.");
       return;
     }
     setRouteSelectionModalVisible(true);
   };
 
+  // Funktion til at vælge en rute
   const selectRoute = (route) => {
     setCurrentRoute(route);
     setRouteSelectionModalVisible(false);
   };
 
+  // Funktion til at rydde rutefilter
   const clearRouteFilter = () => {
     setCurrentRoute(null);
   };
 
+  // Naviger til skærmen for at tilføje en ny levering
   const navigateToAddDelivery = () => {
     if (!currentRoute) {
-      Alert.alert("No Current Route", "Please set a current route first.");
+      Alert.alert("Ingen Aktuel Rute", "Indstil venligst en aktuel rute først.");
       return;
     }
     navigation.navigate("New Delivery", { routeId: currentRoute.id });
@@ -179,6 +187,7 @@ export default function MapScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* Kortvisning med leveringsmarkører og rute */}
       <MapView
         ref={mapRef}
         style={styles.map}
@@ -191,7 +200,7 @@ export default function MapScreen({ navigation }) {
           longitudeDelta: 0.0421,
         }}
       >
-        {/* Display pickups as markers */}
+        {/* Vis afhentningssteder som markører */}
         {filteredDeliveries.map((delivery) => (
           <Marker
             key={`pickup-${delivery.id}`}
@@ -206,17 +215,17 @@ export default function MapScreen({ navigation }) {
             title={delivery.deliveryDetails}
             description={delivery.pickupAddress}
             onPress={() => {
-              console.log(`Marker pressed for delivery ID: ${delivery.id}`);
+              console.log(`Markør trykket for levering ID: ${delivery.id}`);
               if (delivery) {
                 navigation.navigate("DeliveryDetails", { delivery });
               } else {
-                console.warn("Delivery data is undefined.");
+                console.warn("Leveringsdata er ikke defineret.");
               }
             }}
           />
         ))}
 
-        {/* Display delivery destinations as markers */}
+        {/* Vis leveringsdestinationer som markører */}
         {filteredDeliveries.map((delivery) => (
           <Marker
             key={`delivery-dest-${delivery.id}`}
@@ -232,18 +241,18 @@ export default function MapScreen({ navigation }) {
             description={delivery.deliveryAddress}
             onPress={() => {
               console.log(
-                `Destination Marker pressed for delivery ID: ${delivery.id}`
+                `Destination Markør trykket for levering ID: ${delivery.id}`
               );
               if (delivery) {
                 navigation.navigate("DeliveryDetails", { delivery });
               } else {
-                console.warn("Delivery data is undefined.");
+                console.warn("Leveringsdata er ikke defineret.");
               }
             }}
           />
         ))}
 
-        {/* Optionally, display current route as polyline */}
+        {/* Vis den aktuelle rute som en linje på kortet */}
         {currentRoute && currentRoute.coordinates && (
           <Polyline
             coordinates={currentRoute.coordinates}
@@ -253,35 +262,37 @@ export default function MapScreen({ navigation }) {
         )}
       </MapView>
 
+      {/* Kun for truckere: Knap til at tilføje en levering */}
       {role === "trucker" && (
         <>
-          {/* Add Delivery Button */}
+          {/* Knap til at tilføje levering til rute */}
           <TouchableOpacity
             style={styles.addButton}
             onPress={navigateToAddDelivery}
           >
             <Ionicons name="add-circle" size={24} color="#fff" />
-            <Text style={styles.buttonText}>Add to Route</Text>
+            <Text style={styles.buttonText}>Tilføj til Rute</Text>
           </TouchableOpacity>
-          {/* Route Selection Button */}
+          
+          {/* Knap til at vælge eller ændre rute */}
           <TouchableOpacity
             style={styles.routeSelectionButton}
             onPress={openRouteSelectionModal}
           >
             <Ionicons name="git-branch" size={24} color="#fff" />
             <Text style={styles.buttonText}>
-              {currentRoute ? "Change Route" : "Show My Route"}
+              {currentRoute ? "Skift Rute" : "Vis Min Rute"}
             </Text>
           </TouchableOpacity>
         </>
       )}
 
-      {/* Center on User Location Button */}
+      {/* Knap til at centrere kortet på brugerens placering */}
       <TouchableOpacity style={styles.centerButton} onPress={centerOnUser}>
         <Ionicons name="locate" size={24} color="#fff" />
       </TouchableOpacity>
 
-      {/* Filter (Search) Button */}
+      {/* Kun for truckere: Knap til at åbne filtermodal */}
       {role === "trucker" && (
         <TouchableOpacity
           style={styles.filterButton}
@@ -291,7 +302,7 @@ export default function MapScreen({ navigation }) {
         </TouchableOpacity>
       )}
 
-      {/* Route Selection Modal */}
+      {/* Modal til valg af rute */}
       <Modal
         visible={routeSelectionModalVisible}
         animationType="slide"
@@ -300,7 +311,8 @@ export default function MapScreen({ navigation }) {
       >
         <View style={styles.modalBackground}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Select a Route</Text>
+            <Text style={styles.modalTitle}>Vælg en Rute</Text>
+            {/* Liste over ruter til valg */}
             <FlatList
               data={routesList}
               keyExtractor={(item) => item.id}
@@ -309,26 +321,28 @@ export default function MapScreen({ navigation }) {
                   style={styles.routeItem}
                   onPress={() => selectRoute(item)}
                 >
-                  <Text style={styles.routeItemText}>Route {item.id}</Text>
+                  <Text style={styles.routeItemText}>Rute {item.id}</Text>
                   <Text style={styles.routeDateText}>{item.date}</Text>
                 </TouchableOpacity>
               )}
-              ListEmptyComponent={<Text>No routes available.</Text>}
+              ListEmptyComponent={<Text>Ingen ruter tilgængelige.</Text>}
             />
+            {/* Knap til at rydde filter */}
             <Button
-              title="Clear Filter"
+              title="Ryd Filter"
               onPress={clearRouteFilter}
               color="red"
             />
+            {/* Knap til at lukke modal */}
             <Button
-              title="Close"
+              title="Luk"
               onPress={() => setRouteSelectionModalVisible(false)}
             />
           </View>
         </View>
       </Modal>
 
-      {/* Filter Modal */}
+      {/* Modal til filtrering af leveringer */}
       <Modal
         visible={filterModalVisible}
         animationType="slide"
@@ -337,55 +351,54 @@ export default function MapScreen({ navigation }) {
       >
         <View style={styles.modalBackground}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Filter Deliveries</Text>
-            <Text>Max Distance From Location (km)</Text>
+            <Text style={styles.modalTitle}>Filtrer Leveringer</Text>
+            <Text>Maksimal Afstand Fra Placering (km)</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="e.g. 50"
+              placeholder="f.eks. 50"
               value={maxDistanceKm}
               onChangeText={setMaxDistanceKm}
               keyboardType="numeric"
             />
-            {/*No functionality yet*/}
-            <Text>Max Weight (kg)</Text>
+            {/* Funktionalitet til filtrering af vægt og dimensioner kan tilføjes her */}
+            <Text>Maksimal Vægt (kg)</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="e.g. 50"
+              placeholder="f.eks. 50"
               value={maxDistanceKm}
               keyboardType="numeric"
             />
-            {/*No functionality yet*/}
-            <Text>Max Length (cm)</Text>
+            <Text>Maksimal Længde (cm)</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="e.g. 50"
+              placeholder="f.eks. 50"
               value={maxDistanceKm}
               keyboardType="numeric"
             />
-            {/*No functionality yet*/}
-            <Text>Max Width (cm)</Text>
+            <Text>Maksimal Bredde (cm)</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="e.g. 50"
+              placeholder="f.eks. 50"
               value={maxDistanceKm}
               keyboardType="numeric"
             />
-            {/*No functionality yet*/}
-            <Text>Max Height (cm)</Text>
+            <Text>Maksimal Højde (cm)</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="e.g. 50"
+              placeholder="f.eks. 50"
               value={maxDistanceKm}
               keyboardType="numeric"
             />
             <View style={styles.modalButtons}>
+              {/* Knap til at anvende filter */}
               <Button
-                title="Apply Filter"
+                title="Anvend Filter"
                 onPress={() => setFilterModalVisible(false)}
               />
               <View style={{ height: 10 }} />
+              {/* Knap til at rydde filter */}
               <Button
-                title="Clear Filter"
+                title="Ryd Filter"
                 color="red"
                 onPress={() => {
                   setMaxDistanceKm("");
@@ -400,6 +413,7 @@ export default function MapScreen({ navigation }) {
   );
 }
 
+// Styling for komponenten
 const styles = StyleSheet.create({
   container: {
     flex: 1,

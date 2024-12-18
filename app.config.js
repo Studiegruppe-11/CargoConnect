@@ -50,7 +50,6 @@ export default {
     experiments: {
       tsconfigPaths: true
     },
-      newArchEnabled: true,
     plugins: [
       [
         'expo-image-picker',

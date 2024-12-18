@@ -1,3 +1,6 @@
+// components/RouteDetails.js
+// Kompnent til visning af detaljer for en rute med stop og leveringer
+
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -22,34 +25,37 @@ const RouteDetailsScreen = ({ route, navigation }) => {
   const db = getDatabase(); 
   const routeData = routeItem && routeItem.routes && routeItem.routes[0];
 
+  // Lytter til autentificeringstilstanden
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         setCurrentUser(user);
       } else {
-        Alert.alert('Error', 'Please login first');
+        Alert.alert('Fejl', 'Log venligst ind først');
         navigation.navigate('Login');
       }
     });
     return unsubscribe;
   }, [navigation]);
 
+  // Hvis der ikke er route data, vis en besked
   if (!routeItem || !routeData || !Array.isArray(routeData.stops)) {
     return (
       <View style={styles.center}>
-        <Text>No route data available.</Text>
+        <Text>Ingen rutedata tilgængelig.</Text>
       </View>
     );
   }
 
   const stops = routeData.stops;
 
-  // Extract coordinates
+  // Udtrækker koordinater fra stop
   const coordinates = stops.map((stop) => ({
     latitude: stop.coordinates.latitude,
     longitude: stop.coordinates.longitude,
   }));
 
+  // Initial region for kortet
   const initialRegion = {
     latitude: coordinates[0].latitude,
     longitude: coordinates[0].longitude,
@@ -57,6 +63,7 @@ const RouteDetailsScreen = ({ route, navigation }) => {
     longitudeDelta: 0.05,
   };
 
+  // Funktion til at få leverings-ID fra taskId
   const getDeliveryId = (taskId) => {
     if (!taskId) return null;
     return taskId.startsWith('delivery-') 
@@ -64,7 +71,7 @@ const RouteDetailsScreen = ({ route, navigation }) => {
       : taskId.replace('delivery--', '');
   };
 
-  // Fetch delivery data for each delivery encountered in stops
+  // Henter leveringsdata for hver levering i stop
   useEffect(() => {
     const fetchDeliveriesData = async () => {
       const uniqueDeliveryIds = new Set();
@@ -84,7 +91,7 @@ const RouteDetailsScreen = ({ route, navigation }) => {
         if (deliverySnapshot.exists()) {
           deliveriesData[deliveryId] = deliverySnapshot.val();
         } else {
-          console.warn(`No delivery found with id: ${deliveryId}`);
+          console.warn(`Ingen levering fundet med id: ${deliveryId}`);
         }
       }
 
@@ -95,29 +102,30 @@ const RouteDetailsScreen = ({ route, navigation }) => {
     fetchDeliveriesData();
   }, [stops, db]);
 
+  // Funktion til at anmode om levering
   const requestDelivery = async () => {
     if (isLoading) return;
 
     try {
       setIsLoading(true);
       if (!currentUser) {
-        Alert.alert("Error", "Please login first");
+        Alert.alert("Fejl", "Log venligst ind først");
         return;
       }
 
       if (!Array.isArray(routeData.stops)) {
-        throw new Error("Invalid route data");
+        throw new Error("Ugyldige rutedata");
       }
 
-      // Check if route is already assigned
+      // Tjekker om ruten allerede er tildelt
       const routeRef = ref(db, `routes/${routeItem.id}`);
       const routeSnapshot = await get(routeRef);
       if (routeSnapshot.exists() && routeSnapshot.val().status === 'assigned') {
-        Alert.alert('Error', 'This route has already been assigned');
+        Alert.alert('Fejl', 'Denne rute er allerede tildelt');
         return;
       }
 
-      // Loop through all deliveries in the route
+      // Henter brugerdata
       const userRef = ref(db, `users/${currentUser.uid}`);
       const truckerSnapshot = await get(userRef);
       const truckerData = truckerSnapshot.val() || {};
@@ -135,60 +143,63 @@ const RouteDetailsScreen = ({ route, navigation }) => {
           const deliveryData = deliverySnapshot.val();
           if (!deliveryData?.companyId) continue;
 
-          // Add request to delivery
+          // Tilføjer anmodning til leveringen
           batchUpdates[`deliveries/${deliveryId}/requests/${currentUser.uid}`] = {
             truckerName: currentUser.displayName || currentUser.email,
             requestTime: Date.now(),
-            licensePlate: truckerData.licensePlate || "Unknown",
+            licensePlate: truckerData.licensePlate || "Ukendt",
             truckType: truckerData.truckType || "Standard", 
             rating: truckerData.rating || 4.5,
             truckerProfile: {
               email: currentUser.email,
-              phone: truckerData.phone || "Not provided",
-              experience: truckerData.experience || "Not provided"
+              phone: truckerData.phone || "Ikke oplyst",
+              experience: truckerData.experience || "Ikke oplyst"
             },
             routeId: routeItem.id
           };
 
-          // Add notification
+          // Tilføjer notifikation
           const notificationId = Date.now();
           batchUpdates[`notifications/${deliveryData.companyId}/${notificationId}`] = {
             type: 'new_request',
             deliveryId: deliveryId,
             truckerId: currentUser.uid,
-            message: `New delivery request from ${currentUser.displayName || currentUser.email}`,
+            message: `Ny leveringsanmodning fra ${currentUser.displayName || currentUser.email}`,
             status: 'unread',
             timestamp: Date.now(),
           };
         }
       }
 
+      // Opdaterer databasen med batch updates
       if (Object.keys(batchUpdates).length > 0) {
         await update(ref(getDatabase()), batchUpdates);
-        Alert.alert("Success", "Requests sent to companies");
+        Alert.alert("Succes", "Anmodninger sendt til virksomheder");
       } else {
-        Alert.alert("No Deliveries", "No deliveries were found to request.");
+        Alert.alert("Ingen Leveringer", "Ingen leveringer blev fundet til at anmode om.");
       }
 
     } catch (error) {
-      console.error('Route request error:', error);
-      Alert.alert('Error', error.message || 'Failed to request route');
+      console.error('Fejl ved ruteanmodning:', error);
+      Alert.alert('Fejl', error.message || 'Kunne ikke anmode om rute');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Vis loader mens leveringsdata hentes
   if (fetchingDeliveries) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#2F67B2"/>
-        <Text>Loading delivery details...</Text>
+        <Text>Indlæser leveringsdetaljer...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      {/* Kortvisning med rute og markører */}
       <MapView style={styles.map} initialRegion={initialRegion}>
         {coordinates.length > 1 && (
           <Polyline
@@ -205,7 +216,7 @@ const RouteDetailsScreen = ({ route, navigation }) => {
               longitude: stop.coordinates.longitude,
             }}
             title={`${stop.type} - ${stop.taskId}`}
-            description={`Arrival: ${stop.arrivalTime}`}
+            description={`Ankomst: ${stop.arrivalTime}`}
             pinColor={
               stop.type === "Pickup"
                 ? "green"
@@ -216,43 +227,49 @@ const RouteDetailsScreen = ({ route, navigation }) => {
           />
         ))}
       </MapView>
+      
+      {/* Header med rutens detaljer */}
       <View style={styles.detailsHeader}>
-        <Text style={styles.title}>Route Details</Text>
+        <Text style={styles.title}>Rutedetaljer</Text>
         <Text style={styles.subtitle}>
-          Payment: {Math.round(routeItem.totalCost)}€
+          Betaling: {Math.round(routeItem.totalCost)}€
         </Text>
-        <Text style={styles.subtitle}>Number of stops: {stops.length}</Text>
+        <Text style={styles.subtitle}>Antal stop: {stops.length}</Text>
       </View>
+      
+      {/* Liste over stop */}
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {stops.map((stop, i) => {
           const deliveryId = getDeliveryId(stop.taskId);
           const deliveryData = deliveryId ? deliveriesInfo[deliveryId] : null;
 
           let payment = deliveryData?.payment || 'N/A';
-          let pickupAddress = deliveryData?.pickupAddress || 'Unknown';
-          let deliveryAddress = deliveryData?.deliveryAddress || 'Unknown';
+          let pickupAddress = deliveryData?.pickupAddress || 'Ukendt';
+          let deliveryAddress = deliveryData?.deliveryAddress || 'Ukendt';
 
           return (
             <View key={i} style={styles.stopCard}>
               <Text style={styles.stopTitle}>{stop.type} - {stop.taskId}</Text>
-              <Text style={styles.stopInfo}>Arrival Time: {stop.arrivalTime}</Text>
+              <Text style={styles.stopInfo}>Ankomsttid: {stop.arrivalTime}</Text>
               {deliveryData && (
                 <>
-                  <Text style={styles.stopInfo}>Pickup: {pickupAddress}</Text>
-                  <Text style={styles.stopInfo}>Delivery: {deliveryAddress}</Text>
-                  <Text style={styles.stopInfo}>Payment: {payment}</Text>
+                  <Text style={styles.stopInfo}>Afhentning: {pickupAddress}</Text>
+                  <Text style={styles.stopInfo}>Levering: {deliveryAddress}</Text>
+                  <Text style={styles.stopInfo}>Betaling: {payment}</Text>
                 </>
               )}
             </View>
           );
         })}
+        
+        {/* Knap til at anmode om rute */}
         <TouchableOpacity
           style={[styles.requestButton, isLoading && styles.disabledButton]}
           onPress={requestDelivery}
           disabled={isLoading}
         >
           <Text style={styles.buttonText}>
-            {isLoading ? 'Sending Request...' : 'Request Route'}
+            {isLoading ? 'Sender Anmodning...' : 'Anmod om Rute'}
           </Text>
         </TouchableOpacity>
       </ScrollView>

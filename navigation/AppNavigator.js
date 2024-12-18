@@ -9,7 +9,6 @@ import { getDatabase, ref, get, onValue } from 'firebase/database';
 import { SafeAreaView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-// Import Screens
 import LoginScreen from '../components/Login';
 import RegisterScreen from '../components/Register';
 
@@ -29,73 +28,91 @@ import ActiveRoute from '../components/ActiveRoute';
 import TruckerMenu from '../components/TruckerMenu';
 import RouteHistory from '../components/RouteHistory';
 
-// Stacks
+// Definerer stakke
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Common Profile Stack
+// Fælles profil-stak
 function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {/* Skærm for profilhjem */}
       <Stack.Screen name="ProfileHome" component={ProfileScreen} />
     </Stack.Navigator>
   );
 }
 
-// Map stack (Trucker)
+// Kort-stak (Trucker)
 function MapStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {/* Skærm for korthjem */}
       <Stack.Screen name="MapHome" component={MapScreen} />
+      {/* Skærm for leveringsdetaljer */}
       <Stack.Screen name="DeliveryDetails" component={DeliveryDetailsScreen} />
     </Stack.Navigator>
   );
 }
 
-// Routes stack (Trucker)
+// Rute-stak (Trucker)
 function TruckerRoutesStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {/* Skærm for truckermenu */}
       <Stack.Screen name="TruckerMenu" component={TruckerMenu} />
+      {/* Skærm for at optimere ruter */}
       <Stack.Screen name="OptimizeRoutes" component={OptimizeRoutesScreen}/>
+      {/* Skærm for liste over ruter */}
       <Stack.Screen name="RouteList" component={RouteListScreen}/>
+      {/* Skærm for rutedetaljer */}
       <Stack.Screen name="RouteDetails" component={RouteDetailsScreen}/>
+      {/* Skærm for aktiv rute */}
       <Stack.Screen name="ActiveRoute" component={ActiveRoute}/>
+      {/* Skærm for rutehistorik */}
       <Stack.Screen name="RouteHistory" component={RouteHistory}/>
     </Stack.Navigator>
   );
 }
 
-// Company stack
+// Firma-stak
 function CompanyStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {/* Skærm for firmamenü */}
       <Stack.Screen name="CompanyMenu" component={CompanyMenu} />
+      {/* Skærm for ny levering */}
       <Stack.Screen name="New Delivery" component={ClientInputScreen} />
+      {/* Skærm for notifikationer */}
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      {/* Skærm for aktive leveringer */}
       <Stack.Screen name="Active Deliveries" component={ActiveDeliveriesScreen} />
+      {/* Skærm for leveringshistorik */}
       <Stack.Screen name="Delivery History" component={DeliveryHistoryScreen} />
+      {/* Skærm for redigering af leveringsdetaljer */}
       <Stack.Screen name="DeliveryDetailsEdit" component={DeliveryDetailsEdit} />
     </Stack.Navigator>
   );
 }
 
-// Auth stack
+// Auth-stak
 function AuthStack() {
   return (
     <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+      {/* Skærm for login */}
       <Stack.Screen name="Login" component={LoginScreen}/>
+      {/* Skærm for registrering */}
       <Stack.Screen name="Register" component={RegisterScreen}/>
     </Stack.Navigator>
   );
 }
 
-// Trucker Tab Navigator: Map, Routes, Profile
+// Trucker Tab Navigator: Kort, Ruter, Profil
 function TruckerTabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        headerShown:false,
+        headerShown: false,
+        // Definerer ikoner for hver fane
         tabBarIcon: ({ color, size }) => {
           let iconName;
           if (route.name === 'Map') {
@@ -109,19 +126,23 @@ function TruckerTabNavigator() {
         },
       })}
     >
+      {/* Fane for kort */}
       <Tab.Screen name="Map" component={MapStack} />
+      {/* Fane for ruter */}
       <Tab.Screen name="Routes" component={TruckerRoutesStack} />
+      {/* Fane for profil */}
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
 }
 
-// Company Tab Navigator: Menu, Profile (you can add more if needed)
+// Firma Tab Navigator: Menu, Profil (kan tilføje flere om nødvendigt)
 function CompanyTabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        headerShown:false,
+        headerShown: false,
+        // Definerer ikoner for hver fane
         tabBarIcon: ({ color, size }) => {
           let iconName;
           if (route.name === 'Menu') {
@@ -133,38 +154,43 @@ function CompanyTabNavigator() {
         },
       })}
     >
+      {/* Fane for menu */}
       <Tab.Screen name="Menu" component={CompanyStack} />
+      {/* Fane for profil */}
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
 }
 
+// Hovedkomponent for navigation
 export default function AppNavigator() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [role, setRole] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null); // Tilstand for den aktuelle bruger
+  const [role, setRole] = useState(null); // Tilstand for brugerens rolle
+  const [loading, setLoading] = useState(true); // Tilstand for indlæsning
 
-  const auth = getAuth();
-  const db = getDatabase();
+  const auth = getAuth(); // Firebase autentificering
+  const db = getDatabase(); // Firebase database
 
   useEffect(() => {
+    // Lytter til autentificeringstilstand
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user);
-        // Set up real-time listener for role changes
+        // Opsætter realtidslytter for rolleændringer
         const roleRef = ref(db, `users/${user.uid}/role`);
         const roleUnsubscribe = onValue(roleRef, (snapshot) => {
           if (snapshot.exists()) {
             setRole(snapshot.val());
           } else {
-            console.warn('No role found for this user.');
+            console.warn('Ingen rolle fundet for denne bruger.');
             setRole(null);
           }
           setLoading(false);
         });
 
+        // Rydder lytteren op ved afmontering
         return () => {
-          roleUnsubscribe(); // Clean up role listener
+          roleUnsubscribe(); // Rydder op i rolle-lytteren
         };
       } else {
         setCurrentUser(null);
@@ -173,9 +199,11 @@ export default function AppNavigator() {
       }
     });
 
+    // Rydder hovedlytteren op ved afmontering
     return () => unsubscribe();
   }, [auth, db]);
 
+  // Viser en indlæsningsindikator, mens data hentes
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -184,6 +212,7 @@ export default function AppNavigator() {
     );
   }
 
+  // Hvis der ikke er nogen bruger, vis autentificeringsstakken
   if (!currentUser) {
     return (
       <NavigationContainer>
@@ -192,6 +221,7 @@ export default function AppNavigator() {
     );
   }
 
+  // Viser forskellige navigatører baseret på brugerens rolle
   if (role === 'company') {
     return (
       <NavigationContainer>
@@ -205,7 +235,8 @@ export default function AppNavigator() {
       </NavigationContainer>
     );
   } else {
-    Alert.alert("Error", "Your account has no assigned role. Contact support.");
+    // Viser en fejlmeddelelse, hvis der ikke er nogen rolle
+    Alert.alert("Fejl", "Din konto har ingen tildelt rolle. Kontakt support.");
     return (
       <NavigationContainer>
         <AuthStack/>
@@ -214,6 +245,7 @@ export default function AppNavigator() {
   }
 }
 
+// Definerer styling for komponenten
 const styles = StyleSheet.create({
   loadingContainer: {
     flex:1,

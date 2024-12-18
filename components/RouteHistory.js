@@ -1,3 +1,7 @@
+// components/RouteHistory.js
+
+// Til at vise rutehistorik
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -6,15 +10,17 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView, // Add this import
+  SafeAreaView,
 } from 'react-native';
 import { getDatabase, ref, onValue } from 'firebase/database';
 import { auth } from '../firebaseConfig';
 
+// Skærm til visning af rutehistorik
 const RouteHistoryScreen = ({ navigation }) => {
   const [routes, setRoutes] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Henter rutehistorik for den nuværende bruger
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
@@ -22,6 +28,7 @@ const RouteHistoryScreen = ({ navigation }) => {
     const db = getDatabase();
     const routesRef = ref(db, `routes/${user.uid}`);
 
+    // Lytter til ændringer i rute data
     const unsubscribe = onValue(routesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -31,7 +38,7 @@ const RouteHistoryScreen = ({ navigation }) => {
             ...route,
             date: new Date(route.timestamp).toLocaleDateString(),
           }))
-          .sort((a, b) => b.timestamp - a.timestamp);
+          .sort((a, b) => b.timestamp - a.timestamp); // Sorter ruter efter dato
         setRoutes(routeList);
       } else {
         setRoutes([]);
@@ -39,13 +46,16 @@ const RouteHistoryScreen = ({ navigation }) => {
       setLoading(false);
     });
 
+    // Rydder lytteren op ved afmontering
     return () => unsubscribe();
   }, []);
 
+  // Håndterer valg af en rute og navigerer til RouteDetails
   const handleRouteSelect = (route) => {
     navigation.navigate('RouteDetails', { route });
   };
 
+  // Viser en loader mens data hentes
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -56,20 +66,22 @@ const RouteHistoryScreen = ({ navigation }) => {
     );
   }
 
+  // Viser en besked hvis ingen ruter findes
   if (routes.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.center}>
-          <Text>No routes found.</Text>
+          <Text>Ingen ruter fundet.</Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  // Viser rutehistorik
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.contentContainer}>
-        <Text style={styles.title}>Route History</Text>
+        <Text style={styles.title}>Rutehistorik</Text>
         <FlatList
           data={routes}
           keyExtractor={(item) => item.id}
@@ -80,14 +92,12 @@ const RouteHistoryScreen = ({ navigation }) => {
             >
               <Text style={styles.routeDate}>{item.date}</Text>
               <Text>
-                Stops:{' '}
-                {item.routes && item.routes[0] && item.routes[0].stops
+                Stop: {item.routes && item.routes[0] && item.routes[0].stops
                   ? item.routes[0].stops.length
                   : 'N/A'}
               </Text>
               <Text>
-                Total Cost:{' '}
-                {item.totalCost !== undefined
+                Samlet Omkostning: {item.totalCost !== undefined
                   ? Math.round(item.totalCost)
                   : 'N/A'}
               </Text>
@@ -99,6 +109,7 @@ const RouteHistoryScreen = ({ navigation }) => {
   );
 };
 
+// Styling for komponent
 const styles = StyleSheet.create({
   container: {
     flex: 1,

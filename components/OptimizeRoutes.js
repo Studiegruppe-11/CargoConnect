@@ -1,4 +1,5 @@
 // components/OptimizeRoutes.js
+// Til at optimere ruter og gemme optimerede ruter i Firebase
 
 import React, { useEffect, useState } from "react";
 import {
@@ -15,16 +16,17 @@ import { auth } from "../firebaseConfig";
 import { useIsFocused } from "@react-navigation/native";
 import { onAuthStateChanged } from "firebase/auth";
 
-// Import functions from nvApi.js
+// Importer funktioner fra nvApi.js
 import { 
   validatePayload, 
   callCuOptAPI, 
   processOptimizedRoutes
 } from '../utils/nvApi';
 
-// Import functions from internFetcher.js
+// Importer funktioner fra internFetcher.js
 import { fetchDeliveries, fetchUserConstraints } from '../utils/internFetcher';
 
+// Importer funktioner fra optimizationUtils.js
 import { 
   prepareCuOptPayload, 
   saveOptimizedRoutes,
@@ -32,38 +34,41 @@ import {
   handleOptimizationError
 } from '../utils/optimizationUtils';
 
+// Skærm til optimering af ruter
 const OptimizeRoutesScreen = ({ navigation }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null); // Tilstand for den aktuelle bruger
+  const [loading, setLoading] = useState(true); // Tilstand for indlæsningsindikator
   const [optimizationStatus, setOptimizationStatus] = useState(
-    "Optimizing routes..."
-  );
-  const [optimizing, setOptimizing] = useState(false);
-  const [error, setError] = useState(null);
-  const isFocused = useIsFocused();
+    "Optimerer ruter..."
+  ); // Tilstand for optimeringsstatus
+  const [optimizing, setOptimizing] = useState(false); // Tilstand for optimeringsproces
+  const [error, setError] = useState(null); // Tilstand for fejlbeskeder
+  const isFocused = useIsFocused(); // Hook til at tjekke om skærmen er fokuseret
 
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null); // Tilstand for den aktuelle bruger
 
+  // Effekt hook til at håndtere brugerautentificering
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         setCurrentUser(user);
       } else {
-        Alert.alert('Error', 'Please login first');
+        Alert.alert('Fejl', 'Log venligst ind først');
         navigation.navigate('Login');
       }
     });
     return () => unsubscribe();
   }, []);
 
-  console.log("OptimizeRoutesScreen mounted.");
+  console.log("OptimizeRoutesScreen monteret.");
 
+  // Effekt hook til at hente data ved ændring af autentificering
   useEffect(() => {
-    console.log("onAuthStateChanged effect triggered.");
+    console.log("onAuthStateChanged effekt trigget.");
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       console.log("onAuthStateChanged currentUser:", currentUser);
       if (!currentUser) {
-        console.log("No user, navigating to Login...");
+        console.log("Ingen bruger, navigerer til Login...");
         navigation.replace("Login");
         return;
       }
@@ -73,98 +78,101 @@ const OptimizeRoutesScreen = ({ navigation }) => {
           navigation.replace("Login");
           return;
         }
-        const constraints = await fetchUserConstraints(navigation);
-        console.log("Fetched constraints on auth change");
+        const constraints = await fetchUserConstraints(navigation); // Hent brugerens køretøjskonfigurationer
+        console.log("Hentede konfigurationer ved autentificeringsændring");
         if (!constraints) {
-          throw new Error("No vehicle constraints found");
+          throw new Error("Ingen køretøjskonfigurationer fundet");
         }
 
-        // Fetch deliveries here.
+        // Hent leveringer
         const deliveries = await fetchDeliveries();
-        console.log("Fetched deliveries");
+        console.log("Hentede leveringer");
 
-        // Now data is ready, show buttons:
+        // Data er klar, vis knapper
         setLoading(false);
 
       } catch (error) {
-        handleOptimizationError(error, navigation);
+        handleOptimizationError(error, navigation); // Håndter fejl under optimering
         setLoading(false);
       }
     });
 
     return () => {
-      console.log("Cleanup onAuthStateChanged.");
+      console.log("Rydder onAuthStateChanged lytter.");
       unsubscribe();
     };
   }, [navigation]);
 
+  // Funktion til at optimere ruter
   const optimizeRoutes = async () => {
     if (!user) {
-      console.warn("optimizeRoutes called but user is not authenticated");
-      throw new Error("User must be authenticated");
+      console.warn("optimizeRoutes kaldt men bruger er ikke autentificeret");
+      throw new Error("Bruger skal være autentificeret");
     }
 
     if (!user || !user.uid) {
-      throw new Error("User is not authenticated.");
+      throw new Error("Bruger er ikke autentificeret.");
     }
   
     try {
       setLoading(true);
-      console.log("Starting optimization process...");
+      console.log("Starter optimeringsproces...");
   
-      const constraints = await fetchUserConstraints(navigation);
-      console.log("Fetched constraints");
+      const constraints = await fetchUserConstraints(navigation); // Hent brugerens konfigurationer
+      console.log("Hentede konfigurationer");
   
-      const deliveries = await fetchDeliveries();
-      console.log("Fetched deliveries");
+      const deliveries = await fetchDeliveries(); // Hent leveringer
+      console.log("Hentede leveringer");
   
-      const { payload, locations } = await prepareCuOptPayload(deliveries, constraints, user);
-      console.log("Generated payload:", payload);
+      const { payload, locations } = await prepareCuOptPayload(deliveries, constraints, user); // Forbered payload til API
+      console.log("Genereret payload:", payload);
   
-      validatePayload(payload);
-      console.log("Payload validation passed");
+      validatePayload(payload); // Valider payload
+      console.log("Payload validering bestået");
   
-      const result = await callCuOptAPI(payload);
-      console.log("API response:", result);
+      const result = await callCuOptAPI(payload); // Kald optimerings-API
+      console.log("API respons:", result);
   
-      const processedRoutes = await processOptimizedRoutes(result, locations);
-      console.log("Processed routes:", processedRoutes);
+      const processedRoutes = await processOptimizedRoutes(result, locations); // Behandl optimerede ruter
+      console.log("Behandlede ruter:", processedRoutes);
   
-      await saveOptimizedRoutes(processedRoutes, user.uid);
-      console.log("Saved optimized routes to Firebase", processedRoutes.routes);
+      await saveOptimizedRoutes(processedRoutes, user.uid); // Gem optimerede ruter i Firebase
+      console.log("Gemte optimerede ruter i Firebase", processedRoutes.routes);
   
       setLoading(false);
     } catch (error) {
-      console.error("Optimization error:", error);
-      handleOptimizationError(error, navigation);
+      console.error("Optimeringsfejl:", error);
+      handleOptimizationError(error, navigation); // Håndter fejl under optimering
       setLoading(false);
     }
   };
 
+  // Funktion til håndtering af optimeringsknaptryk
   const handleOptimizePress = async () => {
     if (optimizing) return;
 
-    console.log("handleOptimizePress called");
+    console.log("handleOptimizePress kaldt");
     setOptimizing(true);
     setError(null);
-    setOptimizationStatus("Starting optimization...");
+    setOptimizationStatus("Starter optimering...");
 
     try {
-      await optimizeRoutes();
+      await optimizeRoutes(); // Kald optimeringsfunktionen
     } catch (error) {
-      console.error("Optimization failed:", error.message);
-      handleOptimizationError(error, navigation);
+      console.error("Optimering mislykkedes:", error.message);
+      handleOptimizationError(error, navigation); // Håndter fejl
     } finally {
       setOptimizing(false);
     }
   };
 
+  // Funktion til at anmode om en rute
   const handleRequestRoute = async (optimizedRoute) => {
     try {
-      await requestRoute(optimizedRoute, currentUser);
+      await requestRoute(optimizedRoute, currentUser); // Anmod om rute
     } catch (error) {
-      console.error('Error requesting route:', error);
-      Alert.alert('Error', 'Failed to request route');
+      console.error('Fejl ved anmodning om rute:', error);
+      Alert.alert('Fejl', 'Kunne ikke anmode om rute');
     }
   };
 
@@ -172,7 +180,10 @@ const OptimizeRoutesScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.contentContainer}>
         <ScrollView>
-          <Text style={styles.title}>Generate Routes</Text>
+          {/* Titel for optimeringsskærmen */}
+          <Text style={styles.title}>Generer Ruter</Text>
+          
+          {/* Vis indlæsningsindikator hvis data hentes */}
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#0000ff" />
@@ -180,18 +191,21 @@ const OptimizeRoutesScreen = ({ navigation }) => {
             </View>
           ) : (
             <View style={styles.contentContainer}>
+              {/* Beskrivelse og knapper når optimering er klar */}
               <Text style={styles.statusText}>
-                Ready to optimize routes. Press the button below to start.
+                Klar til at optimere ruter. Tryk på knappen nedenfor for at starte.
               </Text>
               <View style={styles.buttonContainer}>
+                {/* Knap til at starte optimering */}
                 <Button 
-                  title="Generate Optimized Routes" 
+                  title="Generer Optimerede Ruter" 
                   onPress={handleOptimizePress}
                   disabled={loading} 
                 />
                 <View style={styles.buttonSpacing}>
+                  {/* Knap til at se genererede ruter */}
                   <Button 
-                    title="View Generated Routes" 
+                    title="Se Genererede Ruter" 
                     onPress={() => navigation.navigate('RouteList')} 
                   />
                 </View>
@@ -204,6 +218,7 @@ const OptimizeRoutesScreen = ({ navigation }) => {
   );
 };
 
+// Styling for komponenten (begrænset kommentarer)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -213,7 +228,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     marginVertical: 20,
-    backgroundColor: 'transparent', // Fixes background color issue
+    backgroundColor: 'transparent',
     color: "#333",
     padding: 10,
   },
@@ -238,7 +253,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   buttonSpacing: {
-    marginTop: 15, // Adds space between buttons
+    marginTop: 15, // Tilføjer mellemrum mellem knapperne
   },
 });
 

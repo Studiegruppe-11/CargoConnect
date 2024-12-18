@@ -1,4 +1,5 @@
 // components/CreateDelivery.js
+// Komponent til oprettelse af leveringer
 
 import React, { useState, useEffect, useRef } from "react";
 import {
@@ -30,6 +31,7 @@ import {
 import { GEOCODE_MAPS_APIKEY, auth } from "../firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 
+// Funktion til at konvertere koordinater til en adresse
 const reverseGeocode = async (latitude, longitude) => {
   try {
     const response = await axios.get(`https://geocode.maps.co/reverse`, {
@@ -50,21 +52,22 @@ const reverseGeocode = async (latitude, longitude) => {
       return formattedAddress;
     } else {
       Alert.alert(
-        "Reverse Geocoding Error",
-        "No address found for the provided coordinates."
+        "Reverse Geocoding Fejl",
+        "Ingen adresse fundet for de angivne koordinater."
       );
       return null;
     }
   } catch (error) {
     Alert.alert(
-      "Reverse Geocoding Error",
-      "Failed to convert coordinates to address."
+      "Reverse Geocoding Fejl",
+      "Kunne ikke konvertere koordinater til adresse."
     );
     console.error(error);
     return null;
   }
 };
 
+// Funktion til at konvertere en adresse til koordinater
 const geocodeAddress = async (address) => {
   try {
     const response = await axios.get("https://geocode.maps.co/search", {
@@ -78,22 +81,24 @@ const geocodeAddress = async (address) => {
       return { latitude: parseFloat(lat), longitude: parseFloat(lon) };
     } else {
       Alert.alert(
-        "Geocoding Error",
-        "No results found for the provided address."
+        "Geocoding Fejl",
+        "Ingen resultater fundet for den angivne adresse."
       );
       return null;
     }
   } catch (error) {
-    Alert.alert("Geocoding Error", "Failed to convert address to coordinates.");
+    Alert.alert("Geocoding Fejl", "Kunne ikke konvertere adresse til koordinater.");
     console.error(error);
     return null;
   }
 };
 
+// Hovedkomponent for oprettelse af leveringer
 const ClientInputScreen = ({ navigation, route }) => {
-  const { routeId } = route.params || {}; // Get routeId if provided
+  // Hent rute-ID hvis tilgængelig
+  const { routeId } = route.params || {}; // Hent routeId hvis tilgængelig
 
-  // State variables for pickup
+  // Tilstandsvariabler for afhentningssted
   const [pickupAddress, setPickupAddress] = useState(null);
   const [pickupCoordinates, setPickupCoordinates] = useState({
     latitude: "null",
@@ -103,7 +108,7 @@ const ClientInputScreen = ({ navigation, route }) => {
   const [showMap, setShowMap] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
 
-  // State variables for delivery
+  // Tilstandsvariabler for leveringssted
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryCoordinates, setDeliveryCoordinates] = useState({
     latitude: "",
@@ -113,7 +118,7 @@ const ClientInputScreen = ({ navigation, route }) => {
   const [showDeliveryMap, setShowDeliveryMap] = useState(false);
   const [isGeocodingDelivery, setIsGeocodingDelivery] = useState(false);
 
-  // Other state variables
+  // Andre tilstandsvariabler
   const [deliveryDetails, setDeliveryDetails] = useState("");
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
@@ -122,7 +127,7 @@ const ClientInputScreen = ({ navigation, route }) => {
   // const [payment, setPayment] = useState("");
   const [earliestStartTime, setEarliestStartTime] = useState(new Date());
   const [latestEndTime, setLatestEndTime] = useState(new Date());
-  const [serviceTime, setServiceTime] = useState(10); // in minutes
+  const [serviceTime, setServiceTime] = useState(10); // i minutter
   const [role, setRole] = useState(null);
 
   const [isEarliestStartPickerVisible, setEarliestStartPickerVisibility] =
@@ -130,15 +135,16 @@ const ClientInputScreen = ({ navigation, route }) => {
   const [isLatestEndPickerVisible, setLatestEndPickerVisibility] =
     useState(false);
 
-  // Add new state variables for delivery constraints
+  // Tilføj nye tilstandsvariabler for leveringsbegrænsninger
   const [priority, setPriority] = useState("1");
   const [isMandatory, setIsMandatory] = useState(false);
   const [prize, setPrize] = useState("0");
   const [vehicleTypeRequired, setVehicleTypeRequired] = useState([]);
 
   const db = getDatabase();
-  const mapRef = useRef(null); // Reference to MapView
+  const mapRef = useRef(null); // Reference til kortet
 
+  // Effekt hook til at håndtere brugerautentificering og rolle
   useEffect(() => {
     const authUnsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -148,50 +154,51 @@ const ClientInputScreen = ({ navigation, route }) => {
           setRole(userRole);
           if (userRole !== "company") {
             Alert.alert(
-              "Access Denied",
-              "You do not have permission to access this page."
+              "Adgang Nekter",
+              "Du har ikke tilladelse til at få adgang til denne side."
             );
             navigation.goBack();
           }
         };
-        onValue(userRoleRef, handleRoleChange); // Persistent listener
-        // Automatically fetch user location on mount
+        onValue(userRoleRef, handleRoleChange); // Vedvarende lytter
+        // Automatisk hent brugerens placering ved montering
         getCurrentLocation();
-        // Cleanup listener on unmount
+        // Ryd lytteren ved unmount
         return () => {
           off(userRoleRef, "value", handleRoleChange);
           authUnsubscribe();
         };
       } else {
-        Alert.alert("Authentication Required", "Please log in first.");
+        Alert.alert("Autentificering Krævet", "Log venligst ind først.");
         navigation.navigate("Login");
       }
     });
   }, []);
 
+  // Funktion til at hente brugerens nuværende position
   const getCurrentLocation = async () => {
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Permission Denied",
-          "Permission to access location was denied"
+          "Tilladelse Afvist",
+          "Tilladelse til at få adgang til placering blev afvist."
         );
         return;
       }
       let loc = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = loc.coords;
       setPickupCoordinates({ latitude, longitude });
-      // Reverse geocode to get address
-      setIsGeocoding(true); // Start loading
+      // Reverse geocode for at få adresse
+      setIsGeocoding(true); // Start indlæsning
       const address = await reverseGeocode(latitude, longitude);
       if (address) {
         setPickupAddress(address);
       }
-      setIsGeocoding(false); // End loading
-      // Update map marker
+      setIsGeocoding(false); // Stop indlæsning
+      // Opdater kortmarkør
       setMapMarker({ latitude, longitude });
-      // Center the map on user location
+      // Centrer kortet på brugerens placering
       if (mapRef.current) {
         mapRef.current.animateToRegion(
           {
@@ -204,24 +211,24 @@ const ClientInputScreen = ({ navigation, route }) => {
         );
       }
     } catch (error) {
-      Alert.alert("Error", error.message);
+      Alert.alert("Fejl", error.message);
     }
   };
 
-  // Handle map press for pickup location
+  // Håndter tryk på kortet for afhentningssted
   const handleMapPress = (e) => {
     const { latitude, longitude } = e.nativeEvent.coordinate;
     setMapMarker({ latitude, longitude });
     setPickupCoordinates({ latitude, longitude });
-    // Reverse geocode to get address
-    setIsGeocoding(true); // Start loading
+    // Reverse geocode for at få adresse
+    setIsGeocoding(true); // Start indlæsning
     reverseGeocode(latitude, longitude).then((address) => {
       if (address) {
         setPickupAddress(address);
       }
-      setIsGeocoding(false); // End loading
+      setIsGeocoding(false); // Stop indlæsning
     });
-    // Center the map on the selected location
+    // Centrer kortet på den valgte placering
     if (mapRef.current) {
       mapRef.current.animateToRegion(
         {
@@ -235,7 +242,7 @@ const ClientInputScreen = ({ navigation, route }) => {
     }
   };
 
-  // Handle map press for delivery location
+  // Håndter tryk på kortet for leveringssted
   const handleDeliveryMapPress = (e) => {
     const { latitude, longitude } = e.nativeEvent.coordinate;
     setDeliveryMarker({ latitude, longitude });
@@ -249,16 +256,16 @@ const ClientInputScreen = ({ navigation, route }) => {
     });
   };
 
-  // Handle address input blur for pickup
+  // Håndter når afhentningsadressen mister fokus
   const handleAddressBlur = async () => {
-    if (pickupAddress.trim() === "") return; // Do nothing if address is empty
-    setIsGeocoding(true); // Start loading
+    if (pickupAddress.trim() === "") return; // Gør ingenting hvis adresse er tom
+    setIsGeocoding(true); // Start indlæsning
     const coords = await geocodeAddress(pickupAddress);
     if (coords) {
       setPickupCoordinates(coords);
-      // Update map marker
+      // Opdater kortmarkør
       setMapMarker(coords);
-      // Center the map on the new coordinates
+      // Centrer kortet på de nye koordinater
       if (mapRef.current) {
         mapRef.current.animateToRegion(
           {
@@ -270,7 +277,7 @@ const ClientInputScreen = ({ navigation, route }) => {
           1000
         );
       }
-      // Reverse geocode to get the formatted address
+      // Reverse geocode for at få den formaterede adresse
       const formattedAddress = await reverseGeocode(
         coords.latitude,
         coords.longitude
@@ -279,10 +286,10 @@ const ClientInputScreen = ({ navigation, route }) => {
         setPickupAddress(formattedAddress);
       }
     }
-    setIsGeocoding(false); // End loading
+    setIsGeocoding(false); // Stop indlæsning
   };
 
-  // Handle address input blur for delivery
+  // Håndter når leveringsadressen mister fokus
   const handleDeliveryAddressBlur = async () => {
     if (deliveryAddress.trim() === "") return;
     setIsGeocodingDelivery(true);
@@ -294,31 +301,31 @@ const ClientInputScreen = ({ navigation, route }) => {
     setIsGeocodingDelivery(false);
   };
 
-  // Handle coordinates input blur for pickup
+  // Håndter når koordinaterne mister fokus for afhentning
   const handleCoordinatesBlur = async () => {
     const { latitude, longitude } = pickupCoordinates;
-    if (latitude === "" || longitude === "") return; // Do nothing if coordinates are empty
-    // Validate if latitude and longitude are valid numbers
+    if (latitude === "" || longitude === "") return; // Gør ingenting hvis koordinater er tomme
+    // Valider om latitude og longitude er gyldige tal
     const lat = parseFloat(latitude);
     const lon = parseFloat(longitude);
     if (isNaN(lat) || isNaN(lon)) {
       Alert.alert(
-        "Invalid Coordinates",
-        "Please enter valid numerical coordinates."
+        "Ugyldige Koordinater",
+        "Indtast venligst gyldige numeriske koordinater."
       );
       return;
     }
     setPickupCoordinates({ latitude: lat, longitude: lon });
-    // Reverse geocode to get address
-    setIsGeocoding(true); // Start loading
+    // Reverse geocode for at få adresse
+    setIsGeocoding(true); // Start indlæsning
     const address = await reverseGeocode(lat, lon);
     if (address) {
       setPickupAddress(address);
     }
-    setIsGeocoding(false); // End loading
-    // Update map marker
+    setIsGeocoding(false); // Stop indlæsning
+    // Opdater kortmarkør
     setMapMarker({ latitude: lat, longitude: lon });
-    // Center the map on the new coordinates
+    // Centrer kortet på de nye koordinater
     if (mapRef.current) {
       mapRef.current.animateToRegion(
         {
@@ -332,7 +339,7 @@ const ClientInputScreen = ({ navigation, route }) => {
     }
   };
 
-  // Handle coordinates input blur for delivery
+  // Håndter når koordinaterne mister fokus for levering
   const handleDeliveryCoordinatesBlur = async () => {
     const { latitude, longitude } = deliveryCoordinates;
     if (latitude === "" || longitude === "") return;
@@ -340,8 +347,8 @@ const ClientInputScreen = ({ navigation, route }) => {
     const lon = parseFloat(longitude);
     if (isNaN(lat) || isNaN(lon)) {
       Alert.alert(
-        "Invalid Coordinates",
-        "Please enter valid numerical coordinates."
+        "Ugyldige Koordinater",
+        "Indtast venligst gyldige numeriske koordinater."
       );
       return;
     }
@@ -355,28 +362,29 @@ const ClientInputScreen = ({ navigation, route }) => {
     setIsGeocodingDelivery(false);
   };
 
-  // Handle text change for pickup address
+  // Håndter tekstændring for afhentningsadresse
   const handleAddressChange = (text) => {
     setPickupAddress(text);
   };
 
-  // Handle text change for delivery address
+  // Håndter tekstændring for leveringsadresse
   const handleDeliveryAddressChange = (text) => {
     setDeliveryAddress(text);
   };
 
-  // Handle text change for pickup coordinates
+  // Håndter koordinatændring for afhentning
   const handleCoordinatesChange = (text) => {
     const [lat, lon] = text.split(",").map((coord) => coord.trim());
     setPickupCoordinates({ latitude: lat, longitude: lon });
   };
 
-  // Handle text change for delivery coordinates
+  // Håndter koordinatændring for levering
   const handleDeliveryCoordinatesChange = (text) => {
     const [lat, lon] = text.split(",").map((coord) => coord.trim());
     setDeliveryCoordinates({ latitude: lat, longitude: lon });
   };
 
+  // Opret ny levering i databasen
   const handleCreateDelivery = async () => {
     if (
       !pickupAddress ||
@@ -388,7 +396,7 @@ const ClientInputScreen = ({ navigation, route }) => {
       !payment ||
       !serviceTime
     ) {
-      Alert.alert("Error", "Please fill in all fields.");
+      Alert.alert("Fejl", "Udfyld venligst alle felter.");
       return;
     }
     if (
@@ -397,18 +405,18 @@ const ClientInputScreen = ({ navigation, route }) => {
       !deliveryCoordinates.longitude
     ) {
       Alert.alert(
-        "Error",
-        "Please provide a valid delivery address or coordinates."
+        "Fejl",
+        "Angiv venligst en gyldig leveringsadresse eller koordinater."
       );
       return;
     }
-    // Ensure pickupCoordinates and deliveryCoordinates have latitude and longitude
+    // Sikre at pickupCoordinates og deliveryCoordinates har latitude og longitude
     if (
       !pickupCoordinates ||
       pickupCoordinates.latitude === undefined ||
       pickupCoordinates.longitude === undefined
     ) {
-      Alert.alert("Error", "Invalid pickup coordinates.");
+      Alert.alert("Fejl", "Ugyldige afhentningskoordinater.");
       return;
     }
 
@@ -417,7 +425,7 @@ const ClientInputScreen = ({ navigation, route }) => {
       deliveryCoordinates.latitude === undefined ||
       deliveryCoordinates.longitude === undefined
     ) {
-      Alert.alert("Error", "Invalid delivery coordinates.");
+      Alert.alert("Fejl", "Ugyldige leveringskoordinater.");
       return;
     }
     const newDelivery = {
@@ -431,32 +439,33 @@ const ClientInputScreen = ({ navigation, route }) => {
       width: parseFloat(width),
       length: parseFloat(length),
       payment: parseFloat(payment),
-      companyId: auth.currentUser.uid, // Add this line
+      companyId: auth.currentUser.uid, // Tilføj denne linje
       status: 'pending',
       createdAt: Date.now()
     };
     try {
       const deliveryRef = ref(db, "deliveries");
-      const newRef = push(deliveryRef); // Generates a unique key
-      await set(newRef, newDelivery); // Saves the delivery data under the unique key
-      Alert.alert("Success", "Delivery created successfully.");
-      navigation.goBack(); // Navigate back to the previous screen (MapScreen)
+      const newRef = push(deliveryRef); // Genererer en unik nøgle
+      await set(newRef, newDelivery); // Gemmer leveringsdata under den unikke nøgle
+      Alert.alert("Succes", "Levering oprettet successfully.");
+      navigation.goBack(); // Naviger tilbage til den forrige skærm (MapScreen)
     } catch (error) {
-      Alert.alert("Database Error", "Failed to create delivery.");
+      Alert.alert("Database Fejl", "Kunne ikke oprette levering.");
       console.error(error);
     }
   };
 
+  // Returner brugergrænsefladen
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.contentContainer}>
-        <Text style={styles.title}>Create Delivery</Text>
-        {/* Get Current Location Button */}
-        <Button title="Get Current Location" onPress={getCurrentLocation} />
-        {/* Toggle Map View */}
+        <Text style={styles.title}>Opret Levering</Text>
+        {/* Hent Nuværende Placering Knap */}
+        <Button title="Hent Nuværende Placering" onPress={getCurrentLocation} />
+        {/* Skift Kortvisning */}
         <TouchableOpacity onPress={() => setShowMap(!showMap)}>
           <Text style={styles.toggleMapText}>
-            {showMap ? "Hide Map" : "Show Map"}
+            {showMap ? "Skjul Kort" : "Vis Kort"}
           </Text>
         </TouchableOpacity>
         {showMap && (
@@ -475,50 +484,50 @@ const ClientInputScreen = ({ navigation, route }) => {
               <Marker
                 key={`selectedLocation-${mapMarker.latitude}-${mapMarker.longitude}`}
                 coordinate={mapMarker}
-                title="Pickup Location"
+                title="Afhentningssted"
               />
             )}
           </MapView>
         )}
-        {/* Loading Indicator */}
+        {/* Indlæsningsindikator */}
         {isGeocoding && (
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color="#0000ff" />
-            <Text>Processing Address...</Text>
+            <Text>Behandler Adresse...</Text>
           </View>
         )}
-        {/* Pickup Address */}
-        <Text style={styles.label}>Pickup Address</Text>
+        {/* Afhentningsadresse */}
+        <Text style={styles.label}>Afhentningsadresse</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter pickup address"
+          placeholder="Indtast afhentningsadresse"
           value={pickupAddress}
           onChangeText={handleAddressChange}
           onBlur={handleAddressBlur}
         />
-        {/* Pickup Coordinates */}
-        <Text style={styles.label}>Or coordinates (Latitude, Longitude)</Text>
+        {/* Afhentningskoordinater */}
+        <Text style={styles.label}>Eller koordinater (Breddegrad, Længdegrad)</Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g., 55.85193, 12.566337"
+          placeholder="f.eks., 55.85193, 12.566337"
           value={`${pickupCoordinates.latitude}, ${pickupCoordinates.longitude}`}
           onChangeText={handleCoordinatesChange}
           onBlur={handleCoordinatesBlur}
         />
-        {/* Delivery Details */}
-        <Text style={styles.label}>Delivery Details</Text>
+        {/* Leveringsdetaljer */}
+        <Text style={styles.label}>Leveringsdetaljer</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter delivery details"
+          placeholder="Indtast leveringsdetaljer"
           value={deliveryDetails}
           onChangeText={setDeliveryDetails}
         />
 
-        {/* Delivery Section */}
-        <Text style={styles.sectionTitle}>Delivery Location</Text>
+        {/* Leveringssektion */}
+        <Text style={styles.sectionTitle}>Leveringssted</Text>
         <TouchableOpacity onPress={() => setShowDeliveryMap(!showDeliveryMap)}>
           <Text style={styles.toggleMapText}>
-            {showDeliveryMap ? "Hide Map" : "Show Map"}
+            {showDeliveryMap ? "Skjul Kort" : "Vis Kort"}
           </Text>
         </TouchableOpacity>
         {showDeliveryMap && (
@@ -533,79 +542,81 @@ const ClientInputScreen = ({ navigation, route }) => {
             }}
           >
             {deliveryMarker && (
-              <Marker coordinate={deliveryMarker} title="Delivery Location" />
+              <Marker coordinate={deliveryMarker} title="Leveringssted" />
             )}
           </MapView>
         )}
         {isGeocodingDelivery && (
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color="#0000ff" />
-            <Text>Processing Address...</Text>
+            <Text>Behandler Adresse...</Text>
           </View>
         )}
-        <Text style={styles.label}>Delivery Address</Text>
+        {/* Leveringsadresse */}
+        <Text style={styles.label}>Leveringsadresse</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter delivery address"
+          placeholder="Indtast leveringsadresse"
           value={deliveryAddress}
           onChangeText={handleDeliveryAddressChange}
           onBlur={handleDeliveryAddressBlur}
         />
-        <Text style={styles.label}>Or coordinates (Latitude, Longitude)</Text>
+        {/* Leveringskoordinater */}
+        <Text style={styles.label}>Eller koordinater (Breddegrad, Længdegrad)</Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g., 55.85193, 12.566337"
+          placeholder="f.eks., 55.85193, 12.566337"
           value={`${deliveryCoordinates.latitude}, ${deliveryCoordinates.longitude}`}
           onChangeText={handleDeliveryCoordinatesChange}
           onBlur={handleDeliveryCoordinatesBlur}
         />
-        {/* Weight */}
-        <Text style={styles.label}>Weight (kg)</Text>
+        {/* Vægt */}
+        <Text style={styles.label}>Vægt (kg)</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter weight"
+          placeholder="Indtast vægt"
           value={weight}
           onChangeText={setWeight}
           keyboardType="numeric"
         />
-        {/* Height */}
-        <Text style={styles.label}>Height (cm)</Text>
+        {/* Højde */}
+        <Text style={styles.label}>Højde (cm)</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter height"
+          placeholder="Indtast højde"
           value={height}
           onChangeText={setHeight}
           keyboardType="numeric"
         />
-        {/* Width */}
-        <Text style={styles.label}>Width (cm)</Text>
+        {/* Bredde */}
+        <Text style={styles.label}>Bredde (cm)</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter width"
+          placeholder="Indtast bredde"
           value={width}
           onChangeText={setWidth}
           keyboardType="numeric"
         />
-        {/* Length */}
-        <Text style={styles.label}>Length (cm)</Text>
+        {/* Længde */}
+        <Text style={styles.label}>Længde (cm)</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter length"
+          placeholder="Indtast længde"
           value={length}
           onChangeText={setLength}
           keyboardType="numeric"
         />
-        {/* Payment
-        <Text style={styles.label}>Payment (€)</Text>
+        {/* Betaling
+        <Text style={styles.label}>Betaling (€)</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter payment amount"
+          placeholder="Indtast betalingsbeløb"
           value={payment}
           onChangeText={setPayment}
           keyboardType="numeric"
         /> */}
-        {/* Earliest Start Time */}
-        <Text style={styles.label}>Earliest Start Time</Text>
+        {/* Tidligste Starttidspunkt */}
+        <Text style={styles.label}>Tidligste Starttidspunkt</Text>
         <TouchableOpacity onPress={() => setEarliestStartPickerVisibility(true)}>
           <View style={styles.input}>
             <Text>{earliestStartTime.toLocaleString()}</Text>
@@ -621,8 +632,8 @@ const ClientInputScreen = ({ navigation, route }) => {
           }}
           onCancel={() => setEarliestStartPickerVisibility(false)}
         />
-        {/* Latest End Time */}
-        <Text style={styles.label}>Latest End Time</Text>
+        {/* Seneste Sluttidspunkt */}
+        <Text style={styles.label}>Seneste Sluttidspunkt</Text>
         <TouchableOpacity onPress={() => setLatestEndPickerVisibility(true)}>
           <View style={styles.input}>
             <Text>{latestEndTime.toLocaleString()}</Text>
@@ -638,11 +649,11 @@ const ClientInputScreen = ({ navigation, route }) => {
           }}
           onCancel={() => setLatestEndPickerVisibility(false)}
         />
-        {/* Service Time */}
-        <Text style={styles.label}>Service Time at Stop (minutes)</Text>
+        {/* Service Tid */}
+        <Text style={styles.label}>Servicetid ved Stop (minutter)</Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g., 10"
+          placeholder="f.eks., 10"
           value={serviceTime !== "" ? serviceTime.toString() : ""}
           onChangeText={(text) => {
             if (text === "") {
@@ -653,16 +664,16 @@ const ClientInputScreen = ({ navigation, route }) => {
                 setServiceTime(parsed);
               } else {
                 Alert.alert(
-                  "Invalid Input",
-                  "Please enter a valid number for service time."
+                  "Ugyldig Indtastning",
+                  "Indtast venligst et gyldigt tal for servicetid."
                 );
               }
             }
           }}
           keyboardType="numeric"
         />
-        {/* Delivery Priority */}
-        <Text style={styles.label}>Delivery Priority (1-10)</Text>
+        {/* Leveringsprioritet */}
+        <Text style={styles.label}>Leveringsprioritet (1-10)</Text>
         <TextInput
           style={styles.input}
           value={priority}
@@ -670,27 +681,22 @@ const ClientInputScreen = ({ navigation, route }) => {
           keyboardType="numeric"
         />
 
-        {/* Prize/Bonus */}
-        <Text style={styles.label}>Prize/Bonus (€)</Text>
+        {/* Præmie/Bonus */}
+        <Text style={styles.label}>Præmie/Bonus (€)</Text>
         <TextInput
           style={styles.input}
           value={prize}
           onChangeText={setPrize}
           keyboardType="numeric"
         />
-
-        {/* Add checkboxes for vehicle types */}
-        <Text style={styles.label}>Required Vehicle Types</Text>
-        <View style={styles.checkboxContainer}>
-          {/* Add checkboxes for vehicle types */}
-        </View>
-        {/* Create Delivery Button */}
-        <Button title="Create Delivery" onPress={handleCreateDelivery} />
+    {/* Knap til at oprette levering */}
+        <Button title="Opret Levering" onPress={handleCreateDelivery} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
+// Styling for komponenten
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -739,7 +745,7 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     position: "absolute",
-    top: 0, // Removed 'showMap' dependency
+    top: 0,
     left: 0,
     right: 0,
     bottom: 0,

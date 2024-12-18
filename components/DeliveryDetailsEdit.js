@@ -1,3 +1,6 @@
+// components/DeliveryDetailsEdit.js
+// Til at redigere leveringsdetaljer og håndtere truckeranmodninger
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,25 +13,26 @@ const DeliveryDetailsEdit = ({ route, navigation }) => {
   const [activeTab, setActiveTab] = useState('details');
   const [currentUser, setCurrentUser] = useState(auth.currentUser);
 
+  // Effect hook til at sikre at brugeren er logget ind
   useEffect(() => {
     if (!auth.currentUser) {
-      Alert.alert('Error', 'Please login first');
+      Alert.alert('Fejl', 'Log venligst ind først');
       navigation.navigate('Login');
       return;
     }
     setCurrentUser(auth.currentUser);
   }, [navigation]);
 
-  // Ensure delivery and delivery.id are available
+  // Sikre at leveringsdata og leverings-ID er tilgængelige
   if (!delivery || !delivery.id) {
-    console.error('Delivery data is missing:', delivery);
-    Alert.alert('Error', 'Delivery data is missing.');
+    console.error('Leveringsdata mangler:', delivery);
+    Alert.alert('Fejl', 'Leveringsdata mangler.');
     return null;
   }
 
   const deliveryId = delivery.id;
 
-  // Default coordinates for fallback location
+  // Standardkoordinater for en fallback-lokation
   const defaultLocation = {
     latitude: 55.6761,
     longitude: 12.5683,
@@ -36,7 +40,7 @@ const DeliveryDetailsEdit = ({ route, navigation }) => {
     longitudeDelta: 0.05,
   };
 
-  // Safely get coordinates from delivery or use default
+  // Hent koordinater fra leveringsdata eller brug standardkoordinater
   const pickupLocation = delivery?.pickupLocation || defaultLocation;
   const deliveryLocation = delivery?.deliveryLocation || defaultLocation;
 
@@ -47,22 +51,24 @@ const DeliveryDetailsEdit = ({ route, navigation }) => {
     longitudeDelta: 0.05,
   };
 
+  // Funktion til at opdatere leveringsdata i databasen
   const handleDeliveryUpdate = async (deliveryId, updates) => {
     const db = getDatabase();
     const deliveryRef = ref(db, `deliveries/${deliveryId}`);
     
     try {
       await update(deliveryRef, updates);
-      Alert.alert('Success', 'Delivery updated successfully');
+      Alert.alert('Succes', 'Levering opdateret succesfuldt');
     } catch (error) {
-      console.error('Error updating delivery:', error);
-      Alert.alert('Error', 'Failed to update delivery');
+      console.error('Fejl ved opdatering af levering:', error);
+      Alert.alert('Fejl', 'Kunne ikke opdatere levering');
     }
   };
 
+  // Funktion til at håndtere respons på anmodning fra en trucker
   const handleRequestResponse = async (deliveryId, truckerId, accepted) => {
     if (!currentUser) {
-      Alert.alert('Error', 'Please login first');
+      Alert.alert('Fejl', 'Log venligst ind først');
       return;
     }
 
@@ -75,71 +81,73 @@ const DeliveryDetailsEdit = ({ route, navigation }) => {
       const updates = {};
 
       if (accepted) {
-        // Update delivery status and assign trucker
+        // Opdater leveringsstatus og tilknyt trucker
         updates[`deliveries/${deliveryId}/status`] = 'assigned';
         updates[`deliveries/${deliveryId}/assignedTrucker`] = truckerId;
         updates[`deliveries/${deliveryId}/assignedAt`] = Date.now();
         
-        // Clear pending requests
+        // Fjern ventende anmodninger
         updates[`deliveries/${deliveryId}/requests`] = null;
 
-        // Add notification for trucker
+        // Tilføj notifikation til truckeren
         const notificationId = Date.now();
         updates[`notifications/${truckerId}/${notificationId}`] = {
           type: 'request_accepted',
           deliveryId: deliveryId,
-          message: `Your delivery request was accepted by ${currentUser.displayName || currentUser.email}`,
+          message: `Din leveringsanmodning blev accepteret af ${currentUser.displayName || currentUser.email}`,
           timestamp: Date.now(),
           status: 'unread'
         };
       } else {
-        // Remove only this trucker's request
+        // Fjern specific truckers anmodning
         updates[`deliveries/${deliveryId}/requests/${truckerId}`] = null;
         
-        // Add rejection notification
+        // Tilføj afvisningsnotifikation
         const notificationId = Date.now();
         updates[`notifications/${truckerId}/${notificationId}`] = {
           type: 'request_rejected',
           deliveryId: deliveryId,
-          message: `Your delivery request was rejected by ${currentUser.displayName || currentUser.email}`,
+          message: `Din leveringsanmodning blev afvist af ${currentUser.displayName || currentUser.email}`,
           timestamp: Date.now(),
           status: 'unread'
         };
       }
 
       await update(ref(db), updates);
-      Alert.alert('Success', accepted ? 'Request accepted' : 'Request rejected');
+      Alert.alert('Succes', accepted ? 'Anmodning accepteret' : 'Anmodning afvist');
       navigation.goBack();
     } catch (error) {
-      console.error('Error handling request:', error);
-      Alert.alert('Error', 'Failed to process the request');
+      console.error('Fejl ved håndtering af anmodning:', error);
+      Alert.alert('Fejl', 'Kunne ikke behandle anmodningen');
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Map Section */}
+      {/* Kortvisning med afhentnings- og leveringslokation */}
       <MapView 
         style={styles.map}
         initialRegion={initialRegion}
       >
-        {/* Only render markers and polyline if we have valid locations */}
+        {/* Marker for afhentningssted */}
         {delivery?.pickupLocation && (
           <Marker
             coordinate={pickupLocation}
-            title="Pickup Location"
+            title="Afhentningssted"
             description={delivery.pickupAddress}
             pinColor="#2F67B2"
           />
         )}
+        {/* Marker for leveringssted */}
         {delivery?.deliveryLocation && (
           <Marker
             coordinate={deliveryLocation}
-            title="Delivery Location"
+            title="Leveringssted"
             description={delivery.deliveryAddress}
             pinColor="#FF0000"
           />
         )}
+        {/* Tegn en linje mellem afhentnings- og leveringssted */}
         {delivery?.pickupLocation && delivery?.deliveryLocation && (
           <Polyline
             coordinates={[pickupLocation, deliveryLocation]}
@@ -149,46 +157,47 @@ const DeliveryDetailsEdit = ({ route, navigation }) => {
         )}
       </MapView>
 
-      {/* Tab Buttons */}
+      {/* Tabknapper til skift mellem detaljer og anmodninger */}
       <View style={styles.tabContainer}>
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'details' && styles.activeTab]}
           onPress={() => setActiveTab('details')}
         >
-          <Text style={[styles.tabText, activeTab === 'details' && styles.activeTabText]}>Details</Text>
+          <Text style={[styles.tabText, activeTab === 'details' && styles.activeTabText]}>Detaljer</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'requests' && styles.activeTab]}
           onPress={() => setActiveTab('requests')}
         >
           <Text style={[styles.tabText, activeTab === 'requests' && styles.activeTabText]}>
-            Requests {requests && Object.keys(requests).length > 0 ? `(${Object.keys(requests).length})` : ''}
+            Anmodninger {requests && Object.keys(requests).length > 0 ? `(${Object.keys(requests).length})` : ''}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Content Section */}
+      {/* Indholdsområde afhængigt af aktiv faneblad */}
       <ScrollView style={styles.contentContainer}>
         {activeTab === 'details' ? (
+          // Detaljevisning af leveringsinformation
           <View style={styles.detailsContainer}>
-            <Text style={styles.sectionTitle}>Delivery Information</Text>
+            <Text style={styles.sectionTitle}>Leveringsinformation</Text>
             <View style={styles.infoRow}>
               <Ionicons name="location" size={20} color="#666" />
-              <Text style={styles.infoText}>From: {delivery.pickupAddress}</Text>
+              <Text style={styles.infoText}>Fra: {delivery.pickupAddress}</Text>
             </View>
             <View style={styles.infoRow}>
               <Ionicons name="location" size={20} color="#666" />
-              <Text style={styles.infoText}>To: {delivery.deliveryAddress}</Text>
+              <Text style={styles.infoText}>Til: {delivery.deliveryAddress}</Text>
             </View>
             <View style={styles.infoRow}>
               <Ionicons name="cube" size={20} color="#666" />
               <Text style={styles.infoText}>
-                Size: {delivery.length}x{delivery.width}x{delivery.height}cm
+                Størrelse: {delivery.length}x{delivery.width}x{delivery.height}cm
               </Text>
             </View>
             <View style={styles.infoRow}>
               <Ionicons name="scale" size={20} color="#666" />
-              <Text style={styles.infoText}>Weight: {delivery.weight}kg</Text>
+              <Text style={styles.infoText}>Vægt: {delivery.weight}kg</Text>
             </View>
             <View style={styles.infoRow}>
               <Ionicons name="time" size={20} color="#666" />
@@ -196,9 +205,10 @@ const DeliveryDetailsEdit = ({ route, navigation }) => {
             </View>
           </View>
         ) : (
+          // Visning af anmodninger fra truckere
           <View style={styles.requestsContainer}>
             {(!requests || Object.keys(requests).length === 0) ? (
-              <Text style={styles.noRequestsText}>No pending requests</Text>
+              <Text style={styles.noRequestsText}>Ingen ventende anmodninger</Text>
             ) : (
               Object.entries(requests).map(([truckerId, request]) => (
                 <View key={truckerId} style={styles.requestCard}>
@@ -212,11 +222,11 @@ const DeliveryDetailsEdit = ({ route, navigation }) => {
                   <View style={styles.truckerInfo}>
                     <View style={styles.infoRow}>
                       <Ionicons name="car" size={20} color="#666" />
-                      <Text style={styles.infoText}>License Plate: {request.licensePlate}</Text>
+                      <Text style={styles.infoText}>Nummerplade: {request.licensePlate}</Text>
                     </View>
                     <View style={styles.infoRow}>
                       <Ionicons name="cube" size={20} color="#666" />
-                      <Text style={styles.infoText}>Truck Type: {request.truckType}</Text>
+                      <Text style={styles.infoText}>Trucktype: {request.truckType}</Text>
                     </View>
                     <View style={styles.infoRow}>
                       <Ionicons name="star" size={20} color="#FFD700" />
@@ -224,14 +234,15 @@ const DeliveryDetailsEdit = ({ route, navigation }) => {
                     </View>
                     <View style={styles.infoRow}>
                       <Ionicons name="call" size={20} color="#666" />
-                      <Text style={styles.infoText}>Contact: {request.truckerProfile.phone}</Text>
+                      <Text style={styles.infoText}>Kontakt: {request.truckerProfile.phone}</Text>
                     </View>
                     <View style={styles.infoRow}>
                       <Ionicons name="time" size={20} color="#666" />
-                      <Text style={styles.infoText}>Experience: {request.truckerProfile.experience}</Text>
+                      <Text style={styles.infoText}>Erfaring: {request.truckerProfile.experience}</Text>
                     </View>
                   </View>
 
+                  {/* Handlingsknapper for hver anmodning */}
                   <View style={styles.actionButtons}>
                     <TouchableOpacity 
                       style={[styles.actionButton, styles.viewRouteButton]}
@@ -239,19 +250,19 @@ const DeliveryDetailsEdit = ({ route, navigation }) => {
                         routeId: request.routeId 
                       })}
                     >
-                      <Text style={styles.buttonText}>View Route</Text>
+                      <Text style={styles.buttonText}>Vis Rute</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={[styles.actionButton, styles.acceptButton]}
                       onPress={() => handleRequestResponse(delivery.id, truckerId, true)}
                     >
-                      <Text style={styles.buttonText}>Accept</Text>
+                      <Text style={styles.buttonText}>Accepter</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={[styles.actionButton, styles.rejectButton]}
                       onPress={() => handleRequestResponse(delivery.id, truckerId, false)}
                     >
-                      <Text style={styles.buttonText}>Reject</Text>
+                      <Text style={styles.buttonText}>Afvis</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -264,6 +275,7 @@ const DeliveryDetailsEdit = ({ route, navigation }) => {
   );
 };
 
+// Styling for komponent
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -1,23 +1,29 @@
 // components/DeliveryHistory.js
+// Til at vise brugerens leveringshistorik
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, SafeAreaView } from 'react-native';
 import { getDatabase, ref, onValue } from 'firebase/database';
 import { auth } from '../firebaseConfig';
 
+// Skærm til visning af leveringshistorik
 const DeliveryHistoryScreen = () => {
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState([]); // Tilstand for leveringshistorik
+  const [loading, setLoading] = useState(true); // Tilstand for indlæsningsindikator
 
+  // Effekt hook til at hente leveringshistorik fra databasen
   useEffect(() => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) return; // Stop hvis brugeren ikke er logget ind
 
     const db = getDatabase();
     const historyRef = ref(db, 'deliveries');
-    
+
+    // Lyt til ændringer i leveringsdata
     const unsubscribe = onValue(historyRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
+        // Filtrer leveringer med status 'completed' og formater data
         const completedDeliveries = Object.entries(data)
           .filter(([_, delivery]) => delivery.status === 'completed')
           .map(([id, delivery]) => ({
@@ -25,14 +31,16 @@ const DeliveryHistoryScreen = () => {
             ...delivery,
             completedAt: new Date(delivery.completedAt).toLocaleDateString()
           }));
-        setHistory(completedDeliveries);
+        setHistory(completedDeliveries); // Opdater leveringshistorik
       }
-      setLoading(false);
+      setLoading(false); // Stop indlæsning
     });
 
+    // Ryd lytteren ved unmount
     return () => unsubscribe();
   }, []);
 
+  // Vis indlæsningsindikator, mens data hentes
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -44,15 +52,16 @@ const DeliveryHistoryScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.contentContainer}>
-        <Text style={styles.title}>Delivery History</Text>
+        <Text style={styles.title}>Leveringshistorik</Text>
+        {/* Liste over fuldførte leveringer */}
         <FlatList
           data={history}
           renderItem={({ item }) => (
             <View style={styles.historyItem}>
-              <Text style={styles.historyId}>Delivery #{item.id}</Text>
-              <Text style={styles.historyDetails}>From: {item.pickupAddress}</Text>
-              <Text style={styles.historyDetails}>To: {item.deliveryAddress}</Text>
-              <Text style={styles.historyDate}>Completed: {item.completedAt}</Text>
+              <Text style={styles.historyId}>Levering #{item.id}</Text>
+              <Text style={styles.historyDetails}>Fra: {item.pickupAddress}</Text>
+              <Text style={styles.historyDetails}>Til: {item.deliveryAddress}</Text>
+              <Text style={styles.historyDate}>Fuldført: {item.completedAt}</Text>
             </View>
           )}
           keyExtractor={(item) => item.id}
@@ -62,6 +71,7 @@ const DeliveryHistoryScreen = () => {
   );
 };
 
+// Styling for komponenten
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -80,6 +90,8 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
+    textAlign: 'center',
+    color: '#333',
   },
   historyItem: {
     backgroundColor: '#fff',
@@ -96,6 +108,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 5,
+    color: '#2F67B2',
   },
   historyDetails: {
     fontSize: 14,

@@ -1,4 +1,4 @@
-// /utils/nvApi.js
+// utils/nvApi.js
 
 import { NVIDIA_API_KEY } from "../firebaseConfig";
 

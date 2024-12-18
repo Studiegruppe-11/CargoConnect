@@ -1,4 +1,5 @@
-// /app/index.js
+// app/index.js
+
 import { registerRootComponent } from 'expo';
 import App from '../App.js';
 

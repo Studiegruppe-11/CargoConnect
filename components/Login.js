@@ -1,21 +1,27 @@
 // components/Login.js
+// Login komponent til håndtering af brugerautentifikation
+
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 
+// Hovedkomponent for login-skærmen
 const LoginScreen = ({ navigation }) => {
+  // State variabler til at gemme brugerens input
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  // Funktion til at håndtere login-processen
   const handleLogin = async () => {
     const auth = getAuth();
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
-      Alert.alert('Login Error', error.message);
+      Alert.alert('Login Fejl', error.message);
     }
   };
 
+  // Render login-formularen
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
@@ -44,6 +50,7 @@ const LoginScreen = ({ navigation }) => {
   );
 };
 
+// Styling for komponenten
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
@@ -63,12 +70,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, 
     borderRadius: 8
   },
-  // Add a container for buttons
   buttonContainer: {
     marginTop: 10,
     borderRadius: 8
   },
-  // Add spacing between buttons 
   registerButton: {
     marginTop: 15,
     borderRadius: 25

@@ -1,4 +1,5 @@
 // components/Profile.js
+// Til at vise og redigere brugerpræferencer
 
 import React, { useState, useEffect } from "react";
 import {
@@ -13,6 +14,7 @@ import {
   TouchableOpacity,
   PermissionsAndroid,
   Platform,
+  SafeAreaView,
 } from "react-native";
 import Slider from "@react-native-community/slider";
 import { ref, onValue, update, set } from "firebase/database";
@@ -29,7 +31,7 @@ const ProfileScreen = ({ navigation }) => {
   const [licenseScanned, setLicenseScanned] = useState(false);
   const [licenseVerified, setLicenseVerified] = useState(false);
 
-  // Create debounced save function
+  // Opret debounced gem funktion
   const debouncedSave = debounce(async (preferences) => {
     if (!user) return;
     
@@ -39,35 +41,35 @@ const ProfileScreen = ({ navigation }) => {
       setHasUnsavedChanges(false);
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Failed to save changes');
+      Alert.alert('Fejl', 'Kunne ikke gemme ændringer');
     }
-  }, 1000); // Will save after 1 second of no changes
+  }, 1000); // Vil gemme efter 1 sekund uden ændringer
 
-  // Remove duplicate/unnecessary state variables
+  // Fjern duplikerede/unødvendige tilstandsvariabler
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  // Add role selection before vehicle info
+  // Tilføj rollevalg før køretøjsinformation
   const [role, setRole] = useState('trucker');
 
-  // Vehicle info
+  // Køretøjsinformation
   const [vehicleId, setVehicleId] = useState(`veh-${auth.currentUser?.uid || 'new'}`);
   const [maxCargoWeight, setMaxCargoWeight] = useState('');
   const [maxCargoVolume, setMaxCargoVolume] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
 
-  // Dimensions
+  // Dimensioner
   const [length, setLength] = useState('');
   const [width, setWidth] = useState('');
   const [height, setHeight] = useState('');
 
-  // Location settings
+  // Stedindstillinger
   const [startLatitude, setStartLatitude] = useState('');
   const [startLongitude, setStartLongitude] = useState('');
   const [useMapPicker, setUseMapPicker] = useState(false);
   const [mapMarker, setMapMarker] = useState(null);
 
-  // Time constraints
+  // Tidsbegrænsninger
   const [workStartTime, setWorkStartTime] = useState('8');
   const [workEndTime, setWorkEndTime] = useState('20');
   const [maxDrivingTime, setMaxDrivingTime] = useState('12');
@@ -75,24 +77,24 @@ const ProfileScreen = ({ navigation }) => {
   const [breakStartMax, setBreakStartMax] = useState('13');
   const [breakDuration, setBreakDuration] = useState('0.5');
 
-  // Efficiency settings
+  // Effektivitetsindstillinger
   const [fuelEfficiency, setFuelEfficiency] = useState('');
   const [fuelCost, setFuelCost] = useState('0');
   const [averageSpeed, setAverageSpeed] = useState(60);
 
-  // Trip settings
+  // Turindstillinger
   const [skipFirstTrip, setSkipFirstTrip] = useState(false);
   const [dropReturnTrip, setDropReturnTrip] = useState(false);
   const [minTasksPerDay, setMinTasksPerDay] = useState('1');
 
-  // Other preferences
+  // Andre præferencer
   const [preferredCountries, setPreferredCountries] = useState('');
   const [availability, setAvailability] = useState('');
 
-  // Add unsaved changes state
+  // Tilføj tilstand for usaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Add auth state listener
+  // Tilføj auth state listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
@@ -106,30 +108,30 @@ const ProfileScreen = ({ navigation }) => {
     return () => unsubscribe();
   }, [navigation]);
 
-  // Add before remove listener
+  // Tilføj before remove listener
   useEffect(() => {
     const handleBeforeRemove = (e) => {
       if (!hasUnsavedChanges) return;
       
       e.preventDefault();
       Alert.alert(
-        'Unsaved Changes',
-        'Do you want to save your changes before leaving?',
+        'Usavedede Ændringer',
+        'Vil du gemme dine ændringer før du forlader?',
         [
           {
-            text: 'Save',
+            text: 'Gem',
             onPress: async () => {
               await savePreferences();
               navigation.dispatch(e.data.action);
             },
           },
           {
-            text: 'Leave without saving',
+            text: 'Forlad uden at gemme',
             style: 'destructive',
             onPress: () => navigation.dispatch(e.data.action),
           },
           {
-            text: 'Cancel',
+            text: 'Annuller',
             style: 'cancel',
           },
         ]
@@ -140,7 +142,7 @@ const ProfileScreen = ({ navigation }) => {
     return () => navigation.removeListener('beforeRemove', handleBeforeRemove);
   }, [hasUnsavedChanges, navigation]);
 
-  // Load user preferences
+  // Indlæs brugerpræferencer
   const loadUserPreferences = async (uid) => {
     const userRef = ref(database, `users/${uid}`);
     onValue(userRef, (snapshot) => {
@@ -160,7 +162,7 @@ const ProfileScreen = ({ navigation }) => {
             ? data.preferredCountries.join(", ") 
             : data.preferredCountries || ""
         );
-        setRole(data.role || "trucker"); // Added role
+        setRole(data.role || "trucker"); // Tilføjet rolle
         setAvailability(data.availability || "");
         setStartLatitude(data.startLatitude ? data.startLatitude.toString() : '');
         setStartLongitude(data.startLongitude ? data.startLongitude.toString() : '');
@@ -169,7 +171,7 @@ const ProfileScreen = ({ navigation }) => {
         setHeight(data.dimensions?.height?.toString() || '');
         setLicensePlate(data.licensePlate || '');
         setLicenseVerified(data.licenseVerified || false);
-        setLicenseScanned(data.licenseVerified || false); // Update UI state based on database
+        setLicenseScanned(data.licenseVerified || false); // Opdater UI state baseret på database
       }
       setLoading(false);
     }, {
@@ -177,10 +179,10 @@ const ProfileScreen = ({ navigation }) => {
     });
   };
 
-  // Save preferences with user check
+  // Gem præferencer med brugercheck
   const savePreferences = async () => {
     if (!user) {
-      Alert.alert('Error', 'Must be logged in to save preferences');
+      Alert.alert('Fejl', 'Du skal være logget ind for at gemme præferencer');
       return;
     }
 
@@ -202,10 +204,10 @@ const ProfileScreen = ({ navigation }) => {
     try {
       await update(userRef, preferences);
       setHasUnsavedChanges(false);
-      Alert.alert('Success', 'Preferences saved successfully!');
+      Alert.alert('Succes', 'Præferencer gemt successfully!');
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Failed to save preferences');
+      Alert.alert('Fejl', 'Kunne ikke gemme præferencer');
     }
   };
 
@@ -215,8 +217,8 @@ const ProfileScreen = ({ navigation }) => {
         navigation.navigate('Login');
       })
       .catch((error) => {
-        console.error("Logout error:", error);
-        Alert.alert("Error", "Failed to log out.");
+        console.error("Logout fejl:", error);
+        Alert.alert("Fejl", "Kunne ikke logge ud.");
       });
   };
 
@@ -233,17 +235,17 @@ const ProfileScreen = ({ navigation }) => {
     });
   
     if (!result.cancelled) {
-      // Update local state to reflect that the license has been scanned and verified
+      // Opdater lokal state for at afspejle, at licensen er scannet og verificeret
       setLicenseScanned(true);
       setLicenseVerified(true);
   
-      // Save the verification status to the database
+      // Gem verifikationsstatus til databasen
       const userRef = ref(database, `users/${user.uid}`);
       try {
         await update(userRef, { licenseVerified: true });
       } catch (error) {
-        console.error('Error updating license status:', error);
-        Alert.alert('Error', 'Failed to update license status');
+        console.error('Fejl ved opdatering af licensstatus:', error);
+        Alert.alert('Fejl', 'Kunne ikke opdatere licensstatus');
       }
     }
   };
@@ -257,311 +259,317 @@ const ProfileScreen = ({ navigation }) => {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Settings</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Indstillinger</Text>
 
-      {/* Add Role Selection at the top */}
-      <View style={styles.roleButtonContainer}>
-        <TouchableOpacity 
-          style={[
-            styles.roleButton, 
-            role === 'trucker' && styles.roleButtonActive
-          ]}
-          onPress={() => handleRoleChange('trucker')}
-        >
-          <Text style={[
-            styles.roleButtonText,
-            role === 'trucker' && styles.roleButtonTextActive
-          ]}>Trucker</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[
-            styles.roleButton, 
-            role === 'company' && styles.roleButtonActive
-          ]}
-          onPress={() => handleRoleChange('company')}
-        >
-          <Text style={[
-            styles.roleButtonText,
-            role === 'company' && styles.roleButtonTextActive
-          ]}>Company</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Add License Plate field */}
-      {role === 'trucker' && (
-        <>
-          <View style={styles.scannerContainer}>
-            {licenseVerified ? (
-              <View style={styles.successContainer}>
-                <Ionicons name="checkmark-circle" size={40} color="#4CAF50" />
-                <Text style={styles.successText}>License Verified</Text>
-              </View>
-            ) : (
-              <TouchableOpacity 
-                style={styles.scanButton} 
-                onPress={handleScanLicense}
-              >
-                <Ionicons name="camera" size={24} color="#fff" />
-                <Text style={styles.scanButtonText}>Scan License</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <Text style={styles.sectionTitle}>Vehicle Information</Text>
-          <Text style={styles.label}>License Plate</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter license plate"
-            placeholderTextColor="#666"
-            value={licensePlate}
-            onChangeText={(text) => {
-              setLicensePlate(text);
-              setHasUnsavedChanges(true);
-            }}
-          />
-
-          {/* Dimensions Section directly after license plate */}
-          <Text style={styles.sectionTitle}>Cargo Dimensions</Text>
-          <Text style={styles.inputLabel}>Length (cm):</Text>
-          <TextInput
-            style={styles.input}
-            value={length}
-            onChangeText={(text) => {
-              setLength(text);
-              setHasUnsavedChanges(true);
-            }}
-            keyboardType="numeric"
-          />
-          <Text style={styles.inputLabel}>Width (cm):</Text>
-          <TextInput
-            style={styles.input}
-            value={width}
-            onChangeText={(text) => {
-              setWidth(text);
-              setHasUnsavedChanges(true);
-            }}
-            keyboardType="numeric"
-          />
-          <Text style={styles.inputLabel}>Height (cm):</Text>
-          <TextInput
-            style={styles.input}
-            value={height}
-            onChangeText={(text) => {
-              setHeight(text);
-              setHasUnsavedChanges(true);
-            }}
-            keyboardType="numeric"
-          />
-
-          {/* Cargo Capacity */}
-          <Text style={styles.sectionTitle}>Cargo Capacity</Text>
-          <Text style={styles.label}>Max Cargo Weight (kg)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter max cargo weight"
-            placeholderTextColor="#666"
-            value={maxCargoWeight}
-            onChangeText={(text) => {
-              setMaxCargoWeight(text);
-              setHasUnsavedChanges(true);
-            }}
-            keyboardType="decimal-pad"
-          />
-          <Text style={styles.label}>Max Cargo Volume (m³)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter max cargo volume"
-            placeholderTextColor="#666"
-            value={maxCargoVolume}
-            onChangeText={(text) => {
-              setMaxCargoVolume(text);
-              setHasUnsavedChanges(true);
-            }}
-            keyboardType="decimal-pad"
-          />
-
-          {/* Starting Location Section */}
-          <Text style={styles.sectionTitle}>Starting Location</Text>
-          <TouchableOpacity onPress={() => setUseMapPicker(!useMapPicker)}>
-            <Text style={styles.toggleMapText}>
-              {useMapPicker ? "Hide Map" : "Show Map"}
-            </Text>
+        {/* Tilføj Rollevalg øverst */}
+        <View style={styles.roleButtonContainer}>
+          <TouchableOpacity 
+            style={[
+              styles.roleButton, 
+              role === 'trucker' && styles.roleButtonActive
+            ]}
+            onPress={() => handleRoleChange('trucker')}
+          >
+            <Text style={[
+              styles.roleButtonText,
+              role === 'trucker' && styles.roleButtonTextActive
+            ]}>Trucker</Text>
           </TouchableOpacity>
-
-          {useMapPicker && (
-            <MapView
-              style={styles.map}
-              onPress={(e) => {
-                const { latitude, longitude } = e.nativeEvent.coordinate;
-                setStartLatitude(latitude.toString());
-                setStartLongitude(longitude.toString());
-                setMapMarker({ latitude, longitude });
-                setHasUnsavedChanges(true);
-              }}
-              initialRegion={{
-                latitude: parseFloat(startLatitude) || 55.6816,
-                longitude: parseFloat(startLongitude) || 12.5299,
-                latitudeDelta: 0.0922,
-                longitudeDelta: 0.0421,
-              }}
-            >
-              {mapMarker && <Marker coordinate={mapMarker} />}
-            </MapView>
-          )}
-
-          {/* Location Input Fields */}
-          <View>
-            <Text style={styles.label}>Starting Latitude</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter starting latitude"
-              placeholderTextColor="#666"
-              value={startLatitude}
-              onChangeText={(text) => {
-                setStartLatitude(text);
-                setHasUnsavedChanges(true);
-              }}
-              keyboardType="decimal-pad"
-            />
-
-            <Text style={styles.label}>Starting Longitude</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter starting longitude"
-              placeholderTextColor="#666"
-              value={startLongitude}
-              onChangeText={(text) => {
-                setStartLongitude(text);
-                setHasUnsavedChanges(true);
-              }}
-              keyboardType="decimal-pad"
-            />
-          </View>
-
-          {/* Time Settings Section */}
-          <Text style={styles.sectionTitle}>Time Settings</Text>
-          <Text style={styles.label}>Work Start Time (24h format)</Text>
-          <TextInput
-            style={styles.input}
-            value={workStartTime}
-            onChangeText={(text) => {
-              setWorkStartTime(text);
-              setHasUnsavedChanges(true);
-            }}
-            keyboardType="decimal-pad"
-            placeholder="e.g., 8 for 8:00 AM"
-            placeholderTextColor="#666"
-          />
-          <Text style={styles.label}>Work End Time (24h format)</Text>
-          <TextInput
-            style={styles.input}
-            value={workEndTime}
-            onChangeText={(text) => {
-              setWorkEndTime(text);
-              setHasUnsavedChanges(true);
-            }}
-            keyboardType="decimal-pad"
-            placeholder="e.g., 20 for 8:00 PM"
-            placeholderTextColor="#666"
-          />
-          <Text style={styles.label}>Max Driving Time per Day (hours): {maxDrivingTime}</Text>
-          <Slider
-            minimumValue={1}
-            maximumValue={12}
-            step={1}
-            value={parseFloat(maxDrivingTime)}
-            onValueChange={(value) => {
-              setMaxDrivingTime(value.toString());
-              setHasUnsavedChanges(true);
-            }}
-            style={styles.slider}
-          />
-
-          {/* Break Settings */}
-          <Text style={styles.label}>Break Window</Text>
-          <View style={styles.breakWindowContainer}>
-            <TextInput
-              style={[styles.input, styles.halfInput]}
-              placeholder="Start hour"
-              placeholderTextColor="#666"
-              value={breakStartMin}
-              onChangeText={(text) => {
-                setBreakStartMin(text);
-                setHasUnsavedChanges(true);
-              }}
-              keyboardType="decimal-pad"
-            />
-            <TextInput
-              style={[styles.input, styles.halfInput]}
-              placeholder="End hour"
-              placeholderTextColor="#666"
-              value={breakStartMax}
-              onChangeText={(text) => {
-                setBreakStartMax(text);
-                setHasUnsavedChanges(true);
-              }}
-              keyboardType="decimal-pad"
-            />
-          </View>
-          <Text style={styles.label}>Break Duration (hours)</Text>
-          <TextInput
-            style={styles.input}
-            value={breakDuration}
-            onChangeText={(text) => {
-              setBreakDuration(text);
-              setHasUnsavedChanges(true);
-            }}
-            keyboardType="decimal-pad"
-            placeholderTextColor="#666"
-          />
-
-          {/* Efficiency Settings */}
-          <Text style={styles.sectionTitle}>Efficiency Settings</Text>
-          <Text style={styles.label}>Fuel Efficiency (km/L)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter fuel efficiency"
-            placeholderTextColor="#666"
-            value={fuelEfficiency}
-            onChangeText={(text) => {
-              setFuelEfficiency(text);
-              setHasUnsavedChanges(true);
-            }}
-            keyboardType="decimal-pad"
-          />
-          <Text style={styles.label}>Average Speed (km/h): {averageSpeed}</Text>
-          <Slider
-            minimumValue={30}
-            maximumValue={90}
-            step={5}
-            value={averageSpeed}
-            onValueChange={(value) => {
-              setAverageSpeed(value);
-              setHasUnsavedChanges(true);
-            }}
-            style={styles.slider}
-          />
-        </>
-      )}
-
-      {/* Add a save button near the logout button */}
-      <View style={styles.buttonContainer}>
-        {hasUnsavedChanges && (
-          <Button 
-            title="Save Changes" 
-            onPress={savePreferences}
-            color="#007AFF" 
-          />
-        )}
-        <View style={styles.logoutButtonContainer}>
-          <Button title="Logout" onPress={handleLogout} color="#FF3B30" />
+          <TouchableOpacity 
+            style={[
+              styles.roleButton, 
+              role === 'company' && styles.roleButtonActive
+            ]}
+            onPress={() => handleRoleChange('company')}
+          >
+            <Text style={[
+              styles.roleButtonText,
+              role === 'company' && styles.roleButtonTextActive
+            ]}>Firma</Text>
+          </TouchableOpacity>
         </View>
-      </View>
-    </ScrollView>
+
+        {/* Tilføj Felt for Nummerplade */}
+        {role === 'trucker' && (
+          <>
+            <View style={styles.scannerContainer}>
+              {licenseVerified ? (
+                <View style={styles.successContainer}>
+                  <Ionicons name="checkmark-circle" size={40} color="#4CAF50" />
+                  <Text style={styles.successText}>Licens Verificeret</Text>
+                </View>
+              ) : (
+                <TouchableOpacity 
+                  style={styles.scanButton} 
+                  onPress={handleScanLicense}
+                >
+                  <Ionicons name="camera" size={24} color="#fff" />
+                  <Text style={styles.scanButtonText}>Scan Licens</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <Text style={styles.sectionTitle}>Køretøjsinformation</Text>
+            <Text style={styles.label}>Nummerplade</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Indtast nummerplade"
+              placeholderTextColor="#666"
+              value={licensePlate}
+              onChangeText={(text) => {
+                setLicensePlate(text);
+                setHasUnsavedChanges(true);
+              }}
+            />
+
+            {/* Dimensioner Sektion direkte efter nummerplade */}
+            <Text style={styles.sectionTitle}>Lastdimensioner</Text>
+            <Text style={styles.inputLabel}>Længde (cm):</Text>
+            <TextInput
+              style={styles.input}
+              value={length}
+              onChangeText={(text) => {
+                setLength(text);
+                setHasUnsavedChanges(true);
+              }}
+              keyboardType="numeric"
+            />
+            <Text style={styles.inputLabel}>Bredde (cm):</Text>
+            <TextInput
+              style={styles.input}
+              value={width}
+              onChangeText={(text) => {
+                setWidth(text);
+                setHasUnsavedChanges(true);
+              }}
+              keyboardType="numeric"
+            />
+            <Text style={styles.inputLabel}>Højde (cm):</Text>
+            <TextInput
+              style={styles.input}
+              value={height}
+              onChangeText={(text) => {
+                setHeight(text);
+                setHasUnsavedChanges(true);
+              }}
+              keyboardType="numeric"
+            />
+
+            {/* Lastkapacitet */}
+            <Text style={styles.sectionTitle}>Lastkapacitet</Text>
+            <Text style={styles.label}>Maks Lastvægt (kg)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Indtast maks lastvægt"
+              placeholderTextColor="#666"
+              value={maxCargoWeight}
+              onChangeText={(text) => {
+                setMaxCargoWeight(text);
+                setHasUnsavedChanges(true);
+              }}
+              keyboardType="decimal-pad"
+            />
+            <Text style={styles.label}>Maks Lastvolumen (m³)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Indtast maks lastvolumen"
+              placeholderTextColor="#666"
+              value={maxCargoVolume}
+              onChangeText={(text) => {
+                setMaxCargoVolume(text);
+                setHasUnsavedChanges(true);
+              }}
+              keyboardType="decimal-pad"
+            />
+
+            {/* Startplacering Sektion */}
+            <Text style={styles.sectionTitle}>Startplacering</Text>
+            <TouchableOpacity onPress={() => setUseMapPicker(!useMapPicker)}>
+              <Text style={styles.toggleMapText}>
+                {useMapPicker ? "Skjul Kort" : "Vis Kort"}
+              </Text>
+            </TouchableOpacity>
+
+            {useMapPicker && (
+              <MapView
+                style={styles.map}
+                onPress={(e) => {
+                  const { latitude, longitude } = e.nativeEvent.coordinate;
+                  setStartLatitude(latitude.toString());
+                  setStartLongitude(longitude.toString());
+                  setMapMarker({ latitude, longitude });
+                  setHasUnsavedChanges(true);
+                }}
+                initialRegion={{
+                  latitude: parseFloat(startLatitude) || 55.6816,
+                  longitude: parseFloat(startLongitude) || 12.5299,
+                  latitudeDelta: 0.0922,
+                  longitudeDelta: 0.0421,
+                }}
+              >
+                {mapMarker && <Marker coordinate={mapMarker} />}
+              </MapView>
+            )}
+
+            {/* Indtastningsfelter for Sted */}
+            <View>
+              <Text style={styles.label}>Start Latitude</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Indtast start latitude"
+                placeholderTextColor="#666"
+                value={startLatitude}
+                onChangeText={(text) => {
+                  setStartLatitude(text);
+                  setHasUnsavedChanges(true);
+                }}
+                keyboardType="decimal-pad"
+              />
+
+              <Text style={styles.label}>Start Longitude</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Indtast start longitude"
+                placeholderTextColor="#666"
+                value={startLongitude}
+                onChangeText={(text) => {
+                  setStartLongitude(text);
+                  setHasUnsavedChanges(true);
+                }}
+                keyboardType="decimal-pad"
+              />
+            </View>
+
+            {/* Tidsindstillinger Sektion */}
+            <Text style={styles.sectionTitle}>Tidsindstillinger</Text>
+            <Text style={styles.label}>Arbejdsstarttid (24-timers format)</Text>
+            <TextInput
+              style={styles.input}
+              value={workStartTime}
+              onChangeText={(text) => {
+                setWorkStartTime(text);
+                setHasUnsavedChanges(true);
+              }}
+              keyboardType="decimal-pad"
+              placeholder="f.eks., 8 for 8:00 AM"
+              placeholderTextColor="#666"
+            />
+            <Text style={styles.label}>Arbejdssluttid (24-timers format)</Text>
+            <TextInput
+              style={styles.input}
+              value={workEndTime}
+              onChangeText={(text) => {
+                setWorkEndTime(text);
+                setHasUnsavedChanges(true);
+              }}
+              keyboardType="decimal-pad"
+              placeholder="f.eks., 20 for 8:00 PM"
+              placeholderTextColor="#666"
+            />
+            <Text style={styles.label}>Maks Køretid pr. Dag (timer): {maxDrivingTime}</Text>
+            <Slider
+              minimumValue={1}
+              maximumValue={12}
+              step={1}
+              value={parseFloat(maxDrivingTime)}
+              onValueChange={(value) => {
+                setMaxDrivingTime(value.toString());
+                setHasUnsavedChanges(true);
+              }}
+              style={styles.slider}
+            />
+
+            {/* Pauseindstillinger */}
+            <Text style={styles.label}>Pausevindue</Text>
+            <View style={styles.breakWindowContainer}>
+              <TextInput
+                style={[styles.input, styles.halfInput]}
+                placeholder="Start time"
+                placeholderTextColor="#666"
+                value={breakStartMin}
+                onChangeText={(text) => {
+                  setBreakStartMin(text);
+                  setHasUnsavedChanges(true);
+                }}
+                keyboardType="decimal-pad"
+              />
+              <TextInput
+                style={[styles.input, styles.halfInput]}
+                placeholder="Slut time"
+                placeholderTextColor="#666"
+                value={breakStartMax}
+                onChangeText={(text) => {
+                  setBreakStartMax(text);
+                  setHasUnsavedChanges(true);
+                }}
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <Text style={styles.label}>Pause Varighed (timer)</Text>
+            <TextInput
+              style={styles.input}
+              value={breakDuration}
+              onChangeText={(text) => {
+                setBreakDuration(text);
+                setHasUnsavedChanges(true);
+              }}
+              keyboardType="decimal-pad"
+              placeholderTextColor="#666"
+            />
+
+            {/* Effektivitetsindstillinger */}
+            <Text style={styles.sectionTitle}>Effektivitetsindstillinger</Text>
+            <Text style={styles.label}>Brændstofeffektivitet (km/L)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Indtast brændstofeffektivitet"
+              placeholderTextColor="#666"
+              value={fuelEfficiency}
+              onChangeText={(text) => {
+                setFuelEfficiency(text);
+                setHasUnsavedChanges(true);
+              }}
+              keyboardType="decimal-pad"
+            />
+            <Text style={styles.label}>Gennemsnitshastighed (km/t): {averageSpeed}</Text>
+            <Slider
+              minimumValue={30}
+              maximumValue={90}
+              step={5}
+              value={averageSpeed}
+              onValueChange={(value) => {
+                setAverageSpeed(value);
+                setHasUnsavedChanges(true);
+              }}
+              style={styles.slider}
+            />
+          </>
+        )}
+
+        {/* Tilføj en gem knap nær logout knappen */}
+        <View style={styles.buttonContainer}>
+          {hasUnsavedChanges && (
+            <Button 
+              title="Gem Ændringer" 
+              onPress={savePreferences}
+              color="#007AFF" 
+            />
+          )}
+          <View style={styles.logoutButtonContainer}>
+            <Button title="Log Ud" onPress={handleLogout} color="#FF3B30" />
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f9f9f9',
+  },
   container: {
     flexGrow: 1,
     justifyContent: "center",
@@ -651,7 +659,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   roleButton: {
-    flex: 0.48, // Changed from 1 to create spacing
+    flex: 0.48, // Ændret fra 1 for at skabe mellemrum
     padding: 15,
     borderWidth: 1,
     borderColor: "#ccc",

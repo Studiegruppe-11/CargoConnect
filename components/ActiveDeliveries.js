@@ -1,29 +1,35 @@
 // components/ActiveDeliveries.js
+// Komponent til visning og håndtering af aktive leveringer
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import { getDatabase, ref, onValue, update } from 'firebase/database';
 import { auth } from '../firebaseConfig';
 
+// Hovedkomponent for aktive leveringer
 const ActiveDeliveriesScreen = ({ navigation }) => {
-  const [deliveries, setDeliveries] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [pendingRequests, setPendingRequests] = useState({});
-  const [currentUser, setCurrentUser] = useState(null);
+  // State variabler til at holde styr på data
+  const [deliveries, setDeliveries] = useState([]); // Liste af leveringer
+  const [loading, setLoading] = useState(true); // Indlæsningsindikator
+  const [pendingRequests, setPendingRequests] = useState({}); // Ventende anmodninger
+  const [currentUser, setCurrentUser] = useState(null); // Aktuel bruger
 
-  const db = getDatabase(); 
+  const db = getDatabase();
 
+  // Effekt til at håndtere brugerautentifikation
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((user) => {
       if (user) {
         setCurrentUser(user);
       } else {
-        Alert.alert('Error', 'Please login first');
+        Alert.alert('Fejl', 'Venligst log ind først');
         navigation.navigate('Login');
       }
     });
     return () => unsubscribeAuth();
   }, []);
 
+  // Effekt til at hente og lytte efter ændringer i leveringer
   useEffect(() => {
     if (!currentUser) return;
 
@@ -58,14 +64,15 @@ const ActiveDeliveriesScreen = ({ navigation }) => {
     return () => unsubscribe();
   }, [currentUser]);
 
+  // Funktion til at håndtere svar på anmodninger
   const handleRequestResponse = async (deliveryId, truckerId, accepted) => {
     if (!currentUser) {
-      Alert.alert('Error', 'Please login first');
+      Alert.alert('Fejl', 'Venligst log ind først');
       return;
     }
 
     if (!deliveryId || !truckerId) {
-      Alert.alert('Error', 'Missing delivery or trucker information.');
+      Alert.alert('Fejl', 'Manglende leverings- eller vognmandsoplysninger');
       return;
     }
 
@@ -74,7 +81,7 @@ const ActiveDeliveriesScreen = ({ navigation }) => {
 
     try {
       if (accepted) {
-        // Update delivery status and assign trucker
+        // Opdater leveringsstatus og tildel vognmand
         await update(deliveryRef, {
           status: 'assigned',
           truckerId: truckerId,
@@ -94,7 +101,7 @@ const ActiveDeliveriesScreen = ({ navigation }) => {
           }
         });
       } else {
-        // Remove only this trucker's request
+        // Fjern kun denne vognmands anmodning
         await update(deliveryRef, {
           [`requests/${truckerId}`]: null
         });
@@ -113,14 +120,15 @@ const ActiveDeliveriesScreen = ({ navigation }) => {
         });
       }
 
-      Alert.alert('Success', accepted ? 'Request accepted' : 'Request rejected');
+      Alert.alert('Succes', accepted ? 'Anmodning accepteret' : 'Anmodning afvist');
       navigation.goBack();
     } catch (error) {
-      console.error('Error handling request:', error);
-      Alert.alert('Error', 'Failed to handle request');
+      console.error('Fejl ved håndtering af anmodning:', error);
+      Alert.alert('Fejl', 'Kunne ikke håndtere anmodningen');
     }
   };
 
+  // Funktion til at vise anmodningsknapper
   const renderRequestButtons = (deliveryId, requests) => {
     if (!requests) return null;
 
@@ -145,6 +153,7 @@ const ActiveDeliveriesScreen = ({ navigation }) => {
     ));
   };
 
+  // Funktion til at åbne leveringsdetaljer
   const openDeliveryDetails = (delivery) => {
     navigation.navigate('DeliveryDetailsEdit', { 
       delivery,
@@ -152,19 +161,21 @@ const ActiveDeliveriesScreen = ({ navigation }) => {
     });
   };
 
+  // Funktion til at opdatere en levering
   const handleDeliveryUpdate = async (deliveryId, updates) => {
     const db = getDatabase();
     const deliveryRef = ref(db, `deliveries/${deliveryId}`);
     
     try {
       await update(deliveryRef, updates);
-      Alert.alert('Success', 'Delivery updated successfully');
+      Alert.alert('Succes', 'Levering opdateret');
     } catch (error) {
-      console.error('Error updating delivery:', error);
-      Alert.alert('Error', 'Failed to update delivery');
+      console.error('Fejl ved opdatering af levering:', error);
+      Alert.alert('Fejl', 'Kunne ikke opdatere leveringen');
     }
   };
 
+  // Vis indlæsningsindikator mens data hentes
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -173,10 +184,11 @@ const ActiveDeliveriesScreen = ({ navigation }) => {
     );
   }
 
+  // Vis hovedkomponenten
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.contentContainer}>
-        <Text style={styles.title}>Active Deliveries</Text>
+        <Text style={styles.title}>Aktive Leveringer</Text>
         <FlatList
           data={deliveries}
           renderItem={({ item }) => (
@@ -204,20 +216,25 @@ const ActiveDeliveriesScreen = ({ navigation }) => {
   );
 };
 
+// Styling for komponenten
 const styles = StyleSheet.create({
+  // Container stil
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  // Indholdscontainer stil
   contentContainer: {
     flex: 1,
     padding: 20,
   },
+  // Centrer container stil
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  // Øvrige styles...
   title: {
     fontSize: 24,
     fontWeight: 'bold',

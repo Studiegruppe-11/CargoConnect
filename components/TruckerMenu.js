@@ -1,10 +1,16 @@
+// components/TruckerMenu.js
+
+/// Til at navigere til forskellige skærme for en trucker
+
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+// Definerer TruckerMenu komponenten
 const TruckerMenu = ({ navigation }) => {
   return (
     <View style={styles.menuContainer}>
+      {/* Knap til at generere ruter */}
       <TouchableOpacity 
         style={styles.menuButton}
         onPress={() => navigation.navigate('OptimizeRoutes')}
@@ -13,6 +19,7 @@ const TruckerMenu = ({ navigation }) => {
         <Text style={styles.menuButtonText}>Generate Routes</Text>
       </TouchableOpacity>
 
+      {/* Knap til at se genererede ruter */}
       <TouchableOpacity 
         style={styles.menuButton}
         onPress={() => navigation.navigate('RouteList')}
@@ -21,6 +28,7 @@ const TruckerMenu = ({ navigation }) => {
         <Text style={styles.menuButtonText}>View Generated Routes</Text>
       </TouchableOpacity>
 
+      {/* Knap til den aktive rute */}
       <TouchableOpacity 
         style={styles.menuButton}
         onPress={() => navigation.navigate('ActiveRoute')}
@@ -29,6 +37,7 @@ const TruckerMenu = ({ navigation }) => {
         <Text style={styles.menuButtonText}>Active Route</Text>
       </TouchableOpacity>
 
+      {/* Knap til rutehistorik */}
       <TouchableOpacity 
         style={styles.menuButton}
         onPress={() => navigation.navigate('RouteHistory')}
@@ -40,6 +49,7 @@ const TruckerMenu = ({ navigation }) => {
   );
 };
 
+// Definerer styling for komponenten
 const styles = StyleSheet.create({
   menuContainer: {
     flex: 1,
@@ -63,4 +73,5 @@ const styles = StyleSheet.create({
   }
 });
 
+// Eksporterer TruckerMenu komponenten som standard
 export default TruckerMenu;

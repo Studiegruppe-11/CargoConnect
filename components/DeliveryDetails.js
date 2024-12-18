@@ -1,6 +1,7 @@
 // components/DeliveryDetails.js
+// Til at vise detaljer om en levering og tilføje leveringer til en rute
 
-import React, { useContext } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -14,17 +15,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ref, update, onValue } from "firebase/database";
 import { database, auth } from "../firebaseConfig";
 
+// Skærm til visning af leveringsdetaljer
 const DeliveryDetailsScreen = ({ route, navigation }) => {
   const { delivery } = route.params;
-  const currentUser = auth.currentUser; // Use currentUser
+  const currentUser = auth.currentUser; // Hent den nuværende bruger
 
+  // Funktion til at acceptere en stop på leveringen
   const acceptStop = () => {
     if (!delivery || !delivery.id) {
-      Alert.alert("Error", "Invalid delivery data.");
+      Alert.alert("Fejl", "Ugyldige leveringsdata.");
       return;
     }
 
-    // Fetch user's current route ID
+    // Hent brugerens aktuelle rute-ID
     const userRef = ref(database, `users/${currentUser.uid}/currentRouteId`);
 
     onValue(userRef, (snapshot) => {
@@ -34,31 +37,32 @@ const DeliveryDetailsScreen = ({ route, navigation }) => {
         const deliveryRef = ref(database, `deliveries/${delivery.id}`);
         update(deliveryRef, {
           status: "accepted",
-          routeId: currentRouteId, // Associate with current route
+          routeId: currentRouteId, // Tilknyt til den aktuelle rute
         })
           .then(() => {
-            Alert.alert("Stop added to route", "You have accepted this stop.");
-            navigation.goBack(); // Navigate back to the previous screen
+            Alert.alert("Stop tilføjet til rute", "Du har accepteret dette stop.");
+            navigation.goBack(); // Naviger tilbage til den forrige skærm
           })
           .catch((error) => {
             console.error(error);
-            Alert.alert("Error", "Failed to accept the stop.");
+            Alert.alert("Fejl", "Kunne ikke acceptere stop.");
           });
       } else {
-        Alert.alert("No Current Route", "Please set a current route first.");
+        Alert.alert("Ingen Aktuel Rute", "Indstil venligst en aktuel rute først.");
       }
     });
   };
 
+  // Vis en fejlbesked, hvis der ikke er nogen leveringsdata
   if (!delivery) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>No delivery data available.</Text>
+        <Text style={styles.errorText}>Ingen leveringsdata tilgængelig.</Text>
       </View>
     );
   }
 
-  // Destructure delivery details for easier access
+  // Udpak leveringsdetaljer for nem adgang
   const {
     deliveryDetails,
     pickupAddress,
@@ -72,77 +76,80 @@ const DeliveryDetailsScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Kortvisning med afhentnings- og leveringslokation */}
       <MapView style={styles.map}>
-        {/* Display pickup location */}
+        {/* Marker for afhentningssted */}
         <Marker
           key={`pickup-${delivery.id}`}
           coordinate={{
             latitude: pickupLocation ? pickupLocation.latitude : 0,
             longitude: pickupLocation ? pickupLocation.longitude : 0,
           }}
-          title="Pickup Location"
+          title="Afhentningssted"
           description={pickupAddress}
         />
-        {/* Display delivery location */}
+        {/* Marker for leveringssted */}
         <Marker
           key={`delivery-${delivery.id}`}
           coordinate={{
             latitude: deliveryLocation ? deliveryLocation.latitude : 0,
             longitude: deliveryLocation ? deliveryLocation.longitude : 0,
           }}
-          title="Delivery Location"
+          title="Leveringssted"
           description={delivery.deliveryAddress}
         />
-        {/* Optionally, draw a line between pickup and delivery */}
+        {/* Tegn en linje mellem afhentnings- og leveringssted */}
         <Polyline
           coordinates={[pickupLocation, deliveryLocation]}
           strokeColor="#1EB1FC"
           strokeWidth={3}
         />
       </MapView>
+      {/* Scrollable sektion med leveringsdetaljer */}
       <ScrollView style={styles.detailsContainer}>
         <View style={styles.details}>
-          <Text style={styles.title}>Delivery Details</Text>
+          <Text style={styles.title}>Leveringsdetaljer</Text>
           <Text style={styles.detailText}>
-            <Text style={styles.boldText}>Details:</Text> {deliveryDetails}
+            <Text style={styles.boldText}>Detaljer:</Text> {deliveryDetails}
           </Text>
           <Text style={styles.detailText}>
-            <Text style={styles.boldText}>Pickup Address:</Text> {pickupAddress}
+            <Text style={styles.boldText}>Afhentningsadresse:</Text> {pickupAddress}
           </Text>
           <Text style={styles.detailText}>
-            <Text style={styles.boldText}>Delivery Address:</Text>{" "}
+            <Text style={styles.boldText}>Leveringsadresse:</Text>{" "}
             {delivery.deliveryAddress}
           </Text>
 
-          {/* Dimensions Information */}
-          <Text style={styles.subtitle}>Package Dimensions:</Text>
+          {/* Information om pakkens dimensioner */}
+          <Text style={styles.subtitle}>Pakkedimensioner:</Text>
           <View style={styles.dimensionRow}>
-            <Text style={styles.dimensionLabel}>Weight:</Text>
+            <Text style={styles.dimensionLabel}>Vægt:</Text>
             <Text style={styles.dimensionValue}>{weight} kg</Text>
           </View>
           <View style={styles.dimensionRow}>
-            <Text style={styles.dimensionLabel}>Height:</Text>
+            <Text style={styles.dimensionLabel}>Højde:</Text>
             <Text style={styles.dimensionValue}>{height} cm</Text>
           </View>
           <View style={styles.dimensionRow}>
-            <Text style={styles.dimensionLabel}>Width:</Text>
+            <Text style={styles.dimensionLabel}>Bredde:</Text>
             <Text style={styles.dimensionValue}>{width} cm</Text>
           </View>
           <View style={styles.dimensionRow}>
-            <Text style={styles.dimensionLabel}>Length:</Text>
+            <Text style={styles.dimensionLabel}>Længde:</Text>
             <Text style={styles.dimensionValue}>{length} cm</Text>
           </View>
         </View>
 
-        {/* Accept Stop Button */}
+        {/* Knap til at acceptere stop */}
         <View style={styles.buttonContainer}>
-          <Button title="Add stop to current route" onPress={acceptStop} />
+          <Button title="Tilføj stop til aktuel rute" onPress={acceptStop} />
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
+// Styling for komponentet
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
